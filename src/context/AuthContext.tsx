@@ -40,15 +40,6 @@ export function useAuth() {
   return context;
 }
 
-interface FirebaseError {
-  code: string;
-  message: string;
-}
-
-function isFirebaseError(err: unknown): err is FirebaseError {
-  return typeof err === 'object' && err !== null && 'code' in err;
-}
-
 function getFirebaseErrorMessage(code: string): string {
   switch (code) {
     case 'auth/email-already-in-use':
@@ -100,16 +91,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signInWithEmail(email: string, pass: string) {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-    } catch (err: unknown) {
-      throw new Error(getFirebaseErrorMessage(isFirebaseError(err) ? err.code : ''));
+    } catch (err: any) {
+      throw new Error(getFirebaseErrorMessage(err.code));
     }
   }
 
   async function signUpWithEmail(email: string, pass: string) {
     try {
       await createUserWithEmailAndPassword(auth, email, pass);
-    } catch (err: unknown) {
-      throw new Error(getFirebaseErrorMessage(isFirebaseError(err) ? err.code : ''));
+    } catch (err: any) {
+      throw new Error(getFirebaseErrorMessage(err.code));
     }
   }
 
@@ -117,8 +108,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-    } catch (err: unknown) {
-      throw new Error(getFirebaseErrorMessage(isFirebaseError(err) ? err.code : ''));
+    } catch (err: any) {
+      throw new Error(getFirebaseErrorMessage(err.code));
     }
   }
 
@@ -126,8 +117,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const provider = new FacebookAuthProvider();
       await signInWithPopup(auth, provider);
-    } catch (err: unknown) {
-      throw new Error(getFirebaseErrorMessage(isFirebaseError(err) ? err.code : ''));
+    } catch (err: any) {
+      throw new Error(getFirebaseErrorMessage(err.code));
     }
   }
 
@@ -135,16 +126,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const provider = new OAuthProvider('apple.com');
       await signInWithPopup(auth, provider);
-    } catch (err: unknown) {
-      throw new Error(getFirebaseErrorMessage(isFirebaseError(err) ? err.code : ''));
+    } catch (err: any) {
+      throw new Error(getFirebaseErrorMessage(err.code));
     }
   }
 
   const setupRecaptcha = useCallback((containerId: string) => {
     try {
-      const win = window as unknown as { recaptchaVerifier?: RecaptchaVerifier };
-      if (!win.recaptchaVerifier) {
-        win.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
+      if (!(window as any).recaptchaVerifier) {
+        (window as any).recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
           size: 'invisible',
         });
       }
@@ -154,13 +144,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   async function sendPhoneCode(phoneNumber: string): Promise<ConfirmationResult> {
-    const win = window as unknown as { recaptchaVerifier?: RecaptchaVerifier };
-    const appVerifier = win.recaptchaVerifier;
+    const appVerifier = (window as any).recaptchaVerifier;
     if (!appVerifier) throw new Error('Recaptcha not initialized. Please reload the page.');
     try {
       return await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
-    } catch (err: unknown) {
-      throw new Error(getFirebaseErrorMessage(isFirebaseError(err) ? err.code : ''));
+    } catch (err: any) {
+      throw new Error(getFirebaseErrorMessage(err.code));
     }
   }
 
@@ -171,7 +160,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function handleGuestSignIn() {
     try {
       await signInAnonymously(auth);
-    } catch {
+    } catch (err: any) {
       throw new Error('Failed to start demo session. Please try again.');
     }
   }

@@ -58,21 +58,9 @@ Each object must have: "title" (string ≤8 words), "description" (string ≤60 
 let lastCallTime = 0;
 const MIN_INTERVAL_MS = 10_000;
 
-interface ApiError {
-  status?: number;
-  code?: number;
-  message?: string;
-}
-
-function toApiError(err: unknown): ApiError {
-  if (typeof err === 'object' && err !== null) return err as ApiError;
-  return { message: err != null ? String(err) : '' };
-}
-
-export function isTransientError(err: unknown): boolean {
-  const apiErr = toApiError(err);
-  const status = apiErr.status || apiErr.code;
-  const rawMessage = apiErr.message || '';
+export function isTransientError(err: any): boolean {
+  const status = err?.status || err?.code;
+  const rawMessage = err?.message || '';
 
   // 429 (rate limit), 503 (service unavailable), 500 (internal), 502/504 (gateway)
   if (status === 429 || status === 503 || status === 500 || status === 502 || status === 504) {
@@ -119,10 +107,9 @@ export function isTransientError(err: unknown): boolean {
   return false;
 }
 
-export function cleanErrorMessage(err: unknown): string {
-  const apiErr = toApiError(err);
-  const status = apiErr.status || apiErr.code;
-  const rawMessage = apiErr.message || '';
+export function cleanErrorMessage(err: any): string {
+  const status = err?.status || err?.code;
+  const rawMessage = err?.message || '';
 
   let parsedMessage = rawMessage;
   if (rawMessage) {
@@ -186,10 +173,10 @@ export async function retryWithBackoff<T>(
 ): Promise<T> {
   try {
     return await fn();
-  } catch (err: unknown) {
-    if (retries > 0 && isTransientError(err)) {
-      const msg = err instanceof Error ? err.message : String(err);
-      console.warn(`Gemini call failed (transient: ${msg}). Retrying in ${delayMs}ms...`);
+  } catch (err: any) {
+    const isTransient = isTransientError(err);
+    if (retries > 0 && isTransient) {
+      console.warn(`Gemini call failed (transient: ${err?.message || err}). Retrying in ${delayMs}ms...`);
       await new Promise((resolve) => setTimeout(resolve, delayMs));
       return retryWithBackoff(fn, retries - 1, delayMs * backoffFactor, backoffFactor);
     }
@@ -249,7 +236,7 @@ User emission summary (past 7 days):
     for await (const chunk of stream) {
       fullText += chunk.text ?? '';
     }
-  } catch (err: unknown) {
+  } catch (err: any) {
     const friendlyMessage = cleanErrorMessage(err);
     if (friendlyMessage === 'rate_limited') {
       throw new Error('rate_limited');
