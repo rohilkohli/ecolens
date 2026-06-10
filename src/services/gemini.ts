@@ -58,6 +58,132 @@ Each object must have: "title" (string ≤8 words), "description" (string ≤60 
 let lastCallTime = 0;
 const MIN_INTERVAL_MS = 10_000;
 
+export function isTransientError(err: any): boolean {
+  const status = err?.status || err?.code;
+  const rawMessage = err?.message || '';
+
+  // 429 (rate limit), 503 (service unavailable), 500 (internal), 502/504 (gateway)
+  if (status === 429 || status === 503 || status === 500 || status === 502 || status === 504) {
+    return true;
+  }
+
+  const lowerMsg = rawMessage.toLowerCase();
+
+  // Try 1st level parse to check inner code or status
+  try {
+    if (rawMessage.trim().startsWith('{')) {
+      const firstLevel = JSON.parse(rawMessage);
+      if (firstLevel?.error?.code === 503 || firstLevel?.error?.code === 429 || firstLevel?.error?.code === 500) {
+        return true;
+      }
+      
+      const innerMessage = firstLevel?.error?.message || '';
+      if (typeof innerMessage === 'string' && innerMessage.trim().startsWith('{')) {
+        const secondLevel = JSON.parse(innerMessage);
+        if (secondLevel?.error?.code === 503 || secondLevel?.error?.code === 429 || secondLevel?.error?.code === 500) {
+          return true;
+        }
+      }
+    }
+  } catch {
+    // Ignore JSON parsing errors
+  }
+
+  if (
+    lowerMsg.includes('503') ||
+    lowerMsg.includes('500') ||
+    lowerMsg.includes('429') ||
+    lowerMsg.includes('unavailable') ||
+    lowerMsg.includes('high demand') ||
+    lowerMsg.includes('temporary') ||
+    lowerMsg.includes('try again later') ||
+    lowerMsg.includes('resource_exhausted') ||
+    lowerMsg.includes('overloaded') ||
+    lowerMsg.includes('rate limit')
+  ) {
+    return true;
+  }
+
+  return false;
+}
+
+export function cleanErrorMessage(err: any): string {
+  const status = err?.status || err?.code;
+  const rawMessage = err?.message || '';
+
+  let parsedMessage = rawMessage;
+  if (rawMessage) {
+    try {
+      // 1st level parse
+      if (rawMessage.trim().startsWith('{')) {
+        const firstLevel = JSON.parse(rawMessage);
+        
+        if (firstLevel?.error?.message) {
+          parsedMessage = firstLevel.error.message;
+          
+          // 2nd level parse (if inner message is also stringified JSON)
+          if (typeof parsedMessage === 'string' && parsedMessage.trim().startsWith('{')) {
+            const secondLevel = JSON.parse(parsedMessage);
+            if (secondLevel?.error?.message) {
+              parsedMessage = secondLevel.error.message;
+            }
+          }
+        }
+      }
+    } catch {
+      // Ignore JSON parsing errors
+    }
+  }
+
+  const lowerMsg = String(parsedMessage || '').toLowerCase();
+
+  if (
+    status === 429 || 
+    lowerMsg.includes('429') || 
+    lowerMsg.includes('rate limit') || 
+    lowerMsg.includes('rate_limited') || 
+    lowerMsg.includes('resource_exhausted')
+  ) {
+    return 'rate_limited';
+  }
+
+  if (
+    status === 503 ||
+    lowerMsg.includes('503') ||
+    lowerMsg.includes('unavailable') ||
+    lowerMsg.includes('high demand') ||
+    lowerMsg.includes('temporary') ||
+    lowerMsg.includes('overload')
+  ) {
+    return 'The Gemini AI model is currently experiencing high demand. Please try again in a few moments.';
+  }
+
+  if (!parsedMessage) {
+    return 'An unexpected error occurred while communicating with Gemini.';
+  }
+
+  return parsedMessage;
+}
+
+export async function retryWithBackoff<T>(
+  fn: () => Promise<T>,
+  retries = 3,
+  delayMs = 1000,
+  backoffFactor = 2
+): Promise<T> {
+  try {
+    return await fn();
+  } catch (err: any) {
+    const isTransient = isTransientError(err);
+    if (retries > 0 && isTransient) {
+      console.warn(`Gemini call failed (transient: ${err?.message || err}). Retrying in ${delayMs}ms...`);
+      await new Promise((resolve) => setTimeout(resolve, delayMs));
+      return retryWithBackoff(fn, retries - 1, delayMs * backoffFactor, backoffFactor);
+    }
+    throw err;
+  }
+}
+
 export async function fetchInsights(summary: EmissionSummary): Promise<Insight[]> {
   const now = Date.now();
   if (now - lastCallTime < MIN_INTERVAL_MS) {
@@ -91,24 +217,31 @@ User emission summary (past 7 days):
 
   let fullText = '';
   try {
-    const stream = await ai.models.generateContentStream({
-      model: 'gemini-2.5-flash',
-      contents: userMessage,
-      config: {
-        systemInstruction: SYSTEM_PROMPT,
-        temperature: 0.4,
-        maxOutputTokens: 800,
-      },
-    });
+    const stream = await retryWithBackoff(
+      () =>
+        ai.models.generateContentStream({
+          model: 'gemini-2.5-flash',
+          contents: userMessage,
+          config: {
+            systemInstruction: SYSTEM_PROMPT,
+            temperature: 0.4,
+            maxOutputTokens: 800,
+          },
+        }),
+      3,
+      1000,
+      2
+    );
 
     for await (const chunk of stream) {
       fullText += chunk.text ?? '';
     }
   } catch (err: any) {
-    if (err?.status === 429 || err?.message?.includes('429')) {
+    const friendlyMessage = cleanErrorMessage(err);
+    if (friendlyMessage === 'rate_limited') {
       throw new Error('rate_limited');
     }
-    throw new Error(`Gemini API error: ${err?.message || 'Unknown error'}`);
+    throw new Error(friendlyMessage);
   }
 
   // Strip any accidental markdown fences
