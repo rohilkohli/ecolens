@@ -1,12 +1,22 @@
+/** The four supported emission tracking categories. */
 export type EmissionCategory = 'transport' | 'food' | 'energy' | 'shopping';
 
+/** Structure defining an emission factor with unit and conversion rate. */
 export interface EmissionFactor {
+  /** Human-readable label for the activity type. */
   label: string;
+  /** Unit of measurement (e.g. 'km', 'kWh', 'serving'). */
   unit: string;
+  /** kg CO₂e emitted per unit of activity. Source: IPCC AR6 / CEA 2023. */
   co2e_per_unit: number;
+  /** Brief description of what this activity covers. */
   description: string;
 }
 
+/**
+ * Immutable lookup table of emission factors organised by category and sub-type.
+ * All values are IPCC AR6-aligned with India-specific adjustments where applicable.
+ */
 export const EMISSION_FACTORS: Record<EmissionCategory, Record<string, EmissionFactor>> = {
   transport: {
     car_petrol:   { label: 'Car (petrol)',        unit: 'km', co2e_per_unit: 0.192, description: 'Average petrol passenger car' },

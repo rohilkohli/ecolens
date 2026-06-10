@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import type { Challenge } from '../../types';
 import ChallengeCard from './ChallengeCard';
-import Card from '../ui/Card';
 import { useAuth } from '../../context/AuthContext';
 import { getDocument, createDocument } from '../../lib/firestore';
 

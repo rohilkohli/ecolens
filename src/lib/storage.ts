@@ -1,11 +1,17 @@
+/**
+ * Firebase Cloud Storage utilities for file upload, retrieval, and deletion.
+ * @module lib/storage
+ */
+
 import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
 import { storage } from './firebase';
 
 /**
- * Uploads a file to Firebase Storage (Google Cloud Storage container)
- * @param path The destination path in the bucket (e.g. 'avatars/user123.png')
- * @param file The File object from an input element
- * @returns The public download URL of the uploaded file
+ * Uploads a file to Firebase Cloud Storage and returns its public download URL.
+ *
+ * @param path - Destination path in the storage bucket (e.g. 'avatars/user123.png')
+ * @param file - The File object from a file input element
+ * @returns The publicly accessible download URL of the uploaded file
  */
 export async function uploadFile(path: string, file: File): Promise<string> {
   const storageRef = ref(storage, path);
@@ -14,8 +20,10 @@ export async function uploadFile(path: string, file: File): Promise<string> {
 }
 
 /**
- * Retrieves the download URL for a file in Storage
- * @param path The path of the file
+ * Retrieves the public download URL for an existing file in storage.
+ *
+ * @param path - The storage path of the file
+ * @returns The download URL
  */
 export async function getFileUrl(path: string): Promise<string> {
   const storageRef = ref(storage, path);
@@ -23,8 +31,9 @@ export async function getFileUrl(path: string): Promise<string> {
 }
 
 /**
- * Deletes a file from Storage
- * @param path The path of the file
+ * Permanently deletes a file from Cloud Storage.
+ *
+ * @param path - The storage path of the file to delete
  */
 export async function deleteFile(path: string): Promise<void> {
   const storageRef = ref(storage, path);

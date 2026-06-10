@@ -72,7 +72,7 @@ describe('Code Quality — Structural Checks', () => {
   it('package.json uses exact or caret versioning (no wildcards)', () => {
     const pkg = JSON.parse(readFile('package.json'));
     const allDeps = { ...pkg.dependencies, ...pkg.devDependencies };
-    for (const [name, version] of Object.entries(allDeps)) {
+    for (const [, version] of Object.entries(allDeps)) {
       expect(version).not.toContain('*');
       expect(version).not.toContain('latest');
     }

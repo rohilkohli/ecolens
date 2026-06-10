@@ -1,11 +1,30 @@
+/**
+ * Hook for computing emission aggregations from activity data.
+ * Provides today's total, 7-day trend, category breakdown, and weekly summary.
+ * @module hooks/useEmissions
+ */
+
 import type { Activity, EmissionSummary, Category } from '../types';
 
+/** Returns an ISO date string (YYYY-MM-DD) offset by the given number of days from today. */
 function getDateString(offsetDays = 0): string {
   const d = new Date();
   d.setDate(d.getDate() - offsetDays);
   return d.toISOString().split('T')[0];
 }
 
+/**
+ * Computes emission metrics from a list of activities.
+ *
+ * @param activities - Array of Activity records to aggregate
+ * @returns Object with methods: getTodayTotal, getWeeklyTotals, getCategoryBreakdown, getWeeklySummary
+ *
+ * @example
+ * ```typescript
+ * const { getTodayTotal, getWeeklySummary } = useEmissions(activities);
+ * const today = getTodayTotal(); // kg CO₂e today
+ * ```
+ */
 export function useEmissions(activities: Activity[]) {
   function getTodayTotal(): number {
     const today = getDateString();
