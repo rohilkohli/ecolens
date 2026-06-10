@@ -1,116 +1,133 @@
+import { useNavigate } from 'react-router-dom';
 import { useActivities } from '../hooks/useActivities';
 import { useEmissions } from '../hooks/useEmissions';
-import EmissionsSummary from '../components/Dashboard/EmissionsSummary';
+import { useAuth } from '../context/AuthContext';
 import EmissionsChart from '../components/Dashboard/EmissionsChart';
-import FootprintScore from '../components/Dashboard/FootprintScore';
-import { Link } from 'react-router-dom';
-import Button from '../components/ui/Button';
+import DemoBanner from '../components/auth/DemoBanner';
 import Spinner from '../components/ui/Spinner';
 
+const CATEGORY_CONFIG = [
+  { key: 'transport' as const, emoji: '🚗', label: 'Transport' },
+  { key: 'food'      as const, emoji: '🍽️', label: 'Food'      },
+  { key: 'energy'   as const, emoji: '⚡',  label: 'Energy'    },
+  { key: 'shopping' as const, emoji: '🛍️', label: 'Shopping'  },
+];
+
+function getFootprintClass(kg: number): { cls: string; label: string } {
+  if (kg <= 8)  return { cls: 'text-[#2DC878] bg-[#2DC878]/10 border-[#2DC878]/20', label: 'Below average' };
+  if (kg <= 14) return { cls: 'text-amber-400 bg-amber-400/10 border-amber-400/20', label: 'Near average' };
+  return { cls: 'text-red-400 bg-red-400/10 border-red-400/20', label: 'Above average' };
+}
+
 export default function DashboardPage() {
-  const { activities, loading, error, reload } = useActivities();
+  const { activities, loading } = useActivities();
   const { getTodayTotal, getWeeklyTotals, getCategoryBreakdown, getWeeklySummary } = useEmissions(activities);
+  const { currentUser } = useAuth();
+  const navigate = useNavigate();
 
   if (loading) {
     return (
-      <div className="min-h-screen gradient-leaf-radial flex items-center justify-center">
+      <div className="min-h-screen bg-[#0B0F1A] flex items-center justify-center">
         <Spinner label="Loading your data..." />
       </div>
     );
   }
 
-  if (error) {
-    return (
-      <div className="min-h-screen gradient-leaf-radial flex items-center justify-center px-4">
-        <div className="text-center max-w-sm">
-          <div className="w-16 h-16 rounded-2xl bg-danger/10 flex items-center justify-center mx-auto mb-4">
-            <span className="text-3xl">⚠️</span>
-          </div>
-          <p className="text-sm text-[var(--text-primary)] font-medium mb-2">Failed to load data</p>
-          <p className="text-xs text-[var(--text-muted)] mb-4">{error}</p>
-          <Button variant="primary" onClick={reload}>Retry</Button>
-        </div>
-      </div>
-    );
-  }
+  const todayTotal     = getTodayTotal();
+  const weeklyTotals   = getWeeklyTotals();
+  const breakdown      = getCategoryBreakdown(7);
+  const weeklySummary  = getWeeklySummary();
+  const { cls: footprintCls, label: footprintLabel } = getFootprintClass(todayTotal);
 
-  const todayTotal = getTodayTotal();
-  const weeklyTotals = getWeeklyTotals();
-  const categoryBreakdown = getCategoryBreakdown(7);
-  const weeklySummary = getWeeklySummary();
-  const dailyAverage = weeklySummary.total_kg / 7;
+  const formattedDate = new Intl.DateTimeFormat('en-IN', {
+    weekday: 'long', day: 'numeric', month: 'long',
+  }).format(new Date());
 
   return (
-    <div className="min-h-screen gradient-leaf-radial">
-      <div className="max-w-6xl mx-auto px-4 sm:px-6 py-8">
-        {/* Page header */}
-        <div className="mb-8 animate-fade-in">
-          <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)]">
-            Your Carbon Dashboard
-          </h1>
-          <p className="text-[var(--text-secondary)] mt-1 text-sm">
-            Track your personal footprint and work towards a greener lifestyle.
-          </p>
-        </div>
+    <div className="min-h-screen bg-[#0B0F1A] text-white pb-24">
+      <DemoBanner />
 
-        {/* Emissions Summary */}
-        <div className="mb-6">
-          <EmissionsSummary
-            todayTotal={todayTotal}
-            weeklyTotal={weeklySummary.total_kg}
-          />
-        </div>
-
-        {/* Footprint Score */}
-        <div className="mb-6 animate-fade-in" style={{ animationDelay: '0.15s' }}>
-          <FootprintScore dailyAverage={dailyAverage} />
-        </div>
-
-        {/* Emissions Chart */}
-        <div className="mb-6 animate-fade-in" style={{ animationDelay: '0.25s' }}>
-          <EmissionsChart
-            weeklyData={weeklyTotals}
-            categoryBreakdown={categoryBreakdown}
-          />
-        </div>
-
-        {/* Quick actions — empty state */}
-        {activities.length === 0 && (
-          <div className="gradient-leaf rounded-2xl p-8 text-white text-center animate-fade-in-up shadow-lg shadow-leaf/20 relative overflow-hidden">
-            <div className="absolute inset-0 opacity-10" style={{ backgroundImage: 'radial-gradient(circle at 30% 50%, white 1px, transparent 1px)', backgroundSize: '24px 24px' }} aria-hidden="true" />
-            <div className="relative">
-              <span className="text-5xl mb-4 block animate-float" aria-hidden="true">🌍</span>
-              <h2 className="text-2xl font-bold mb-2">Start your eco journey today!</h2>
-              <p className="text-white/80 text-sm mb-6 max-w-sm mx-auto">
-                Log your first activity to see your carbon footprint visualised and get personalised insights.
-              </p>
-              <Link to="/log">
-                <Button variant="secondary" size="lg" className="!bg-white/20 !border-white/30 !text-white hover:!bg-white/30">
-                  Log Your First Activity
-                  <svg className="w-4 h-4 ml-1" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
-                </Button>
-              </Link>
-            </div>
+      {/* ── Score Header ── */}
+      <div className="px-4 pt-4 pb-3 border-b border-white/[0.07]">
+        <p className="text-white/40 text-xs mb-1">{formattedDate}</p>
+        <div className="flex items-end justify-between">
+          <div>
+            <span className="text-4xl font-bold text-[#2DC878]">{todayTotal.toFixed(1)}</span>
+            <span className="text-white/40 text-sm ml-1.5">kg CO₂e today</span>
           </div>
-        )}
-
-        {/* Top activity */}
-        {activities.length > 0 && (
-          <div className="mt-6 bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-2xl p-5 animate-fade-in hover-lift" style={{ boxShadow: 'var(--shadow-card)' }}>
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-xl bg-amber/10 flex items-center justify-center flex-shrink-0">
-                <span className="text-lg" aria-hidden="true">🔝</span>
-              </div>
-              <div>
-                <h2 className="text-xs font-semibold text-[var(--text-muted)] uppercase tracking-wide">
-                  Highest Single Activity (7 days)
-                </h2>
-                <p className="text-base font-bold text-[var(--text-primary)] mt-0.5">{weeklySummary.top_activity}</p>
-              </div>
-            </div>
+          <div className={`text-[11px] px-2.5 py-1 rounded-lg border font-medium ${footprintCls}`}>
+            {footprintLabel}
           </div>
-        )}
+        </div>
       </div>
+
+      {/* ── 4 Category Stat Cards ── */}
+      <div className="grid grid-cols-2 gap-2 p-4">
+        {CATEGORY_CONFIG.map(cat => (
+          <div
+            key={cat.key}
+            className="bg-white/[0.04] border border-white/[0.07] rounded-xl p-3 hover:bg-white/[0.06] transition-colors"
+          >
+            <div className="text-xl mb-1.5">{cat.emoji}</div>
+            <p className="text-xl font-bold text-white tabular-nums">{breakdown[cat.key].toFixed(1)}</p>
+            <p className="text-[9px] text-white/35 mt-0.5 uppercase tracking-wide">{cat.label} kg CO₂e</p>
+          </div>
+        ))}
+      </div>
+
+      {/* ── 7-Day Chart ── */}
+      <div className="mx-4 mb-4 bg-white/[0.03] border border-white/[0.07] rounded-xl p-4">
+        <p className="text-white/40 text-[10px] mb-3 uppercase tracking-wider">7-day trend</p>
+        <EmissionsChart weeklyData={weeklyTotals} categoryBreakdown={breakdown} />
+      </div>
+
+      {/* ── Quick Insight Preview ── */}
+      <div className="mx-4 mb-4">
+        <div
+          className="bg-white/[0.03] border border-white/[0.06] rounded-xl p-4 flex items-start gap-3 cursor-pointer hover:bg-white/[0.05] transition-colors"
+          onClick={() => navigate('/app/insights')}
+          role="button"
+          tabIndex={0}
+          onKeyDown={e => e.key === 'Enter' && navigate('/app/insights')}
+          aria-label="View AI insights"
+        >
+          <div className="w-10 h-10 rounded-xl bg-[#2DC878]/15 border border-[#2DC878]/20 flex items-center justify-center text-xl flex-shrink-0">
+            🤖
+          </div>
+          <div className="flex-1 min-w-0">
+            <p className="text-white/40 text-[9px] uppercase tracking-wider mb-1">Gemini AI</p>
+            {currentUser?.isAnonymous ? (
+              <p className="text-white/60 text-xs leading-relaxed">
+                Sign up to get personalised AI tips based on your footprint data.
+              </p>
+            ) : (
+              <p className="text-white/60 text-xs leading-relaxed">
+                {weeklySummary.total_kg > 0
+                  ? `You emitted ${weeklySummary.total_kg.toFixed(1)} kg this week. Tap for AI reduction tips.`
+                  : 'Log some activities to get AI-powered insights.'}
+              </p>
+            )}
+          </div>
+          <span className="text-white/25 text-sm ml-1">→</span>
+        </div>
+      </div>
+
+      {/* ── Empty state ── */}
+      {activities.length === 0 && (
+        <div className="mx-4 mb-4 bg-[#2DC878]/8 border border-[#2DC878]/15 rounded-xl p-6 text-center animate-fade-in-up">
+          <span className="text-4xl mb-3 block animate-float">🌍</span>
+          <h2 className="text-white font-semibold mb-1">Start your eco journey</h2>
+          <p className="text-white/40 text-xs mb-4 leading-relaxed">
+            Log your first activity to see your carbon footprint and get AI insights.
+          </p>
+          <button
+            onClick={() => navigate('/app/log')}
+            className="bg-[#2DC878] text-[#0B1A12] font-semibold text-sm rounded-xl px-5 py-2.5 hover:bg-[#25B066] transition-colors"
+          >
+            Log first activity
+          </button>
+        </div>
+      )}
     </div>
   );
 }

@@ -1,22 +1,23 @@
 import ChallengeBoard from '../components/Challenges/ChallengeBoard';
+import DemoBanner from '../components/auth/DemoBanner';
 
 export default function ChallengePage() {
   return (
-    <div className="min-h-screen gradient-leaf-radial">
-      <div className="max-w-5xl mx-auto px-4 sm:px-6 py-8">
-        {/* Page header */}
-        <div className="mb-8 animate-fade-in">
-          <h1 className="text-2xl sm:text-3xl font-bold text-[var(--text-primary)] flex items-center gap-2">
-            <span className="text-2xl">🏆</span> Eco Challenges
-          </h1>
-          <p className="text-[var(--text-secondary)] mt-1 text-sm">
-            Take on daily and weekly challenges to meaningfully cut your carbon footprint.
-          </p>
-        </div>
+    <div className="min-h-screen bg-[#0B0F1A] text-white pb-24">
+      <DemoBanner />
 
-        <div className="animate-fade-in-up" style={{ animationDelay: '0.1s' }}>
-          <ChallengeBoard />
-        </div>
+      {/* Header */}
+      <div className="px-4 pt-6 pb-4 border-b border-white/[0.07]">
+        <h1 className="text-xl font-semibold text-white flex items-center gap-2">
+          🏆 Eco Challenges
+        </h1>
+        <p className="text-white/40 text-xs mt-1">
+          Take on daily and weekly habits to cut your carbon footprint.
+        </p>
+      </div>
+
+      <div className="px-4 pt-4 animate-fade-in-up">
+        <ChallengeBoard />
       </div>
     </div>
   );

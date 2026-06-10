@@ -1,8 +1,5 @@
-import type { EmissionSummary } from '../../types';
+import type { EmissionSummary, Insight } from '../../types';
 import { useGemini } from '../../hooks/useGemini';
-import InsightCard from './InsightCard';
-import Button from '../ui/Button';
-import Card from '../ui/Card';
 
 interface GeminiInsightsProps {
   weeklySummary: EmissionSummary;
@@ -10,23 +7,28 @@ interface GeminiInsightsProps {
 
 function SkeletonCard() {
   return (
-    <div
-      className="bg-[var(--bg-card)] border border-[var(--border-subtle)] rounded-2xl p-5"
-      aria-hidden="true"
-    >
-      <div className="flex items-start gap-4 mb-3">
-        <div className="w-12 h-12 bg-[var(--bg-card-hover)] rounded-xl flex-shrink-0 animate-pulse" />
-        <div className="flex-1 space-y-2">
-          <div className="h-4 bg-[var(--bg-card-hover)] rounded-lg w-3/4 animate-pulse" />
-          <div className="h-3 bg-[var(--bg-card-hover)] rounded-lg w-1/3 animate-pulse" style={{ animationDelay: '0.1s' }} />
-        </div>
+    <div className="bg-white/[0.04] border border-white/[0.07] rounded-xl p-4 animate-pulse" aria-hidden="true">
+      <div className="h-3 bg-white/10 rounded w-2/3 mb-2" />
+      <div className="h-2 bg-white/7 rounded w-full mb-1" />
+      <div className="h-2 bg-white/7 rounded w-3/4 mb-3" />
+      <div className="h-5 bg-white/5 rounded-lg w-1/3" />
+    </div>
+  );
+}
+
+function InsightCardDark({ insight }: { insight: Insight }) {
+  return (
+    <div className="bg-white/[0.04] border border-white/[0.07] rounded-xl p-4 flex gap-3 hover:bg-white/[0.06] transition-colors">
+      <div className="w-10 h-10 rounded-xl bg-[#2DC878]/15 border border-[#2DC878]/15 flex items-center justify-center flex-shrink-0 text-xl">
+        {insight.icon}
       </div>
-      <div className="space-y-2 mb-3">
-        <div className="h-3 bg-[var(--bg-card-hover)] rounded-lg animate-pulse" style={{ animationDelay: '0.2s' }} />
-        <div className="h-3 bg-[var(--bg-card-hover)] rounded-lg w-5/6 animate-pulse" style={{ animationDelay: '0.3s' }} />
-        <div className="h-3 bg-[var(--bg-card-hover)] rounded-lg w-4/6 animate-pulse" style={{ animationDelay: '0.4s' }} />
+      <div className="flex-1 min-w-0">
+        <p className="text-sm font-medium text-white mb-1">{insight.title}</p>
+        <p className="text-xs text-white/50 leading-relaxed mb-2">{insight.description}</p>
+        <span className="text-[10px] text-[#2DC878] bg-[#2DC878]/10 border border-[#2DC878]/20 rounded-lg px-2 py-0.5 inline-block">
+          Save ~{insight.saving_kg} kg/month
+        </span>
       </div>
-      <div className="h-10 bg-[var(--bg-card-hover)] rounded-xl animate-pulse" style={{ animationDelay: '0.5s' }} />
     </div>
   );
 }
@@ -38,117 +40,95 @@ export default function GeminiInsights({ weeklySummary }: GeminiInsightsProps) {
 
   return (
     <section aria-labelledby="insights-heading">
-      <Card variant="elevated">
-        <div className="flex items-start justify-between mb-6">
-          <div>
-            <h2 id="insights-heading" className="text-lg font-semibold text-[var(--text-primary)] flex items-center gap-2">
-              <span className="text-lg" aria-hidden="true">✨</span>
-              AI-Powered Insights
-            </h2>
-            <p className="text-sm text-[var(--text-muted)] mt-1">
-              Personalised tips from Gemini 2.5 Flash based on your 7-day data
-            </p>
+
+      {/* No data */}
+      {hasNoData && (
+        <div className="text-center py-12">
+          <div className="w-16 h-16 rounded-2xl bg-white/[0.04] flex items-center justify-center mx-auto mb-4">
+            <span className="text-3xl" aria-hidden="true">📊</span>
           </div>
-          {status === 'success' && (
-            <span className="text-[10px] font-semibold text-leaf uppercase tracking-wide bg-leaf/5 border border-leaf/15 px-2.5 py-1 rounded-full">
+          <p className="text-sm font-medium text-white">Log some activities first</p>
+          <p className="text-xs text-white/40 mt-1 max-w-xs mx-auto">
+            Insights are generated based on your actual emission data.
+          </p>
+        </div>
+      )}
+
+      {/* CTA */}
+      {!hasNoData && status === 'idle' && (
+        <div className="text-center py-10">
+          <div className="w-16 h-16 rounded-2xl bg-[#2DC878]/15 border border-[#2DC878]/20 flex items-center justify-center mx-auto mb-4 animate-float">
+            <span className="text-3xl" aria-hidden="true">✨</span>
+          </div>
+          <p className="text-white/50 text-sm mb-1">
+            {weeklySummary.total_kg.toFixed(1)} kg CO₂e logged this week
+          </p>
+          <p className="text-white/30 text-xs mb-5">Gemini will analyse this and suggest 3 personalised tips</p>
+          <button
+            onClick={() => loadInsights(weeklySummary)}
+            className="bg-[#2DC878] text-[#0B1A12] font-semibold rounded-xl px-6 py-3 text-sm hover:bg-[#25B066] transition-colors active:scale-[0.98]"
+          >
+            ✨ Get personalised tips
+          </button>
+        </div>
+      )}
+
+      {/* Loading skeletons */}
+      {status === 'loading' && (
+        <div className="space-y-3" aria-label="Loading insights" aria-busy="true">
+          <div className="flex items-center gap-2 mb-4 p-3 bg-[#2DC878]/8 border border-[#2DC878]/15 rounded-xl">
+            <span className="inline-block w-4 h-4 border-2 border-[#2DC878] border-t-transparent rounded-full animate-spin" aria-hidden="true" />
+            <p className="text-xs text-[#2DC878]">Analysing your emissions with Gemini 2.5 Flash...</p>
+          </div>
+          <SkeletonCard />
+          <SkeletonCard />
+          <SkeletonCard />
+        </div>
+      )}
+
+      {/* Success */}
+      {status === 'success' && insights.length > 0 && (
+        <div aria-live="polite">
+          <div className="flex items-center justify-between mb-3">
+            <p className="text-white/25 text-[9px] uppercase tracking-widest">Your personalised tips</p>
+            <span className="text-[9px] text-[#2DC878] bg-[#2DC878]/10 border border-[#2DC878]/20 rounded-full px-2 py-0.5">
               Cached 24h
             </span>
-          )}
-        </div>
-
-        {/* No data state */}
-        {hasNoData && (
-          <div className="text-center py-10">
-            <div className="w-16 h-16 rounded-2xl bg-[var(--bg-card-hover)] flex items-center justify-center mx-auto mb-4">
-              <span className="text-3xl" aria-hidden="true">📊</span>
-            </div>
-            <p className="text-sm font-medium text-[var(--text-primary)]">Log some activities first</p>
-            <p className="text-xs text-[var(--text-muted)] mt-1 max-w-xs mx-auto">
-              Insights are generated based on your actual emission data.
-            </p>
           </div>
-        )}
-
-        {/* CTA */}
-        {!hasNoData && status === 'idle' && (
-          <div className="text-center py-8">
-            <div className="w-16 h-16 rounded-2xl gradient-leaf flex items-center justify-center mx-auto mb-5 shadow-lg shadow-leaf/20 animate-float">
-              <span className="text-3xl" aria-hidden="true">✨</span>
-            </div>
-            <p className="text-sm text-[var(--text-secondary)] mb-5 max-w-sm mx-auto">
-              Get personalised reduction tips based on your{' '}
-              <strong className="text-[var(--text-primary)]">{weeklySummary.total_kg.toFixed(2)} kg CO₂e</strong> this week.
-            </p>
-            <Button
-              variant="primary"
-              size="lg"
-              onClick={() => loadInsights(weeklySummary)}
-            >
-              <span aria-hidden="true">✨</span>
-              Get Personalised Tips
-            </Button>
+          <div className="space-y-3 mb-5 stagger-children">
+            {insights.map((insight, i) => (
+              <InsightCardDark key={i} insight={insight} />
+            ))}
           </div>
-        )}
-
-        {/* Loading skeletons */}
-        {status === 'loading' && (
-          <div
-            className="space-y-4"
-            aria-label="Loading insights"
-            aria-busy="true"
+          <button
+            onClick={() => loadInsights(weeklySummary)}
+            className="w-full bg-white/[0.04] border border-white/[0.07] text-white/50 rounded-xl py-2.5 text-sm hover:bg-white/[0.07] hover:text-white/70 transition-colors"
           >
-            <div className="flex items-center gap-3 mb-5 p-3 bg-leaf/5 rounded-xl border border-leaf/10">
-              <span className="inline-block w-5 h-5 border-2 border-leaf border-t-transparent rounded-full animate-spin" aria-hidden="true" />
-              <p className="text-sm text-leaf font-medium">Analysing your emissions with Gemini...</p>
-            </div>
-            <SkeletonCard />
-            <SkeletonCard />
-            <SkeletonCard />
-          </div>
-        )}
+            ↻ Refresh insights
+          </button>
+        </div>
+      )}
 
-        {/* Success: insights */}
-        {status === 'success' && insights.length > 0 && (
-          <div aria-live="polite" aria-atomic="false">
-            <div className="space-y-4 mb-6 stagger-children">
-              {insights.map((insight, i) => (
-                <InsightCard key={i} insight={insight} />
-              ))}
-            </div>
-            <Button
-              variant="outline"
-              size="md"
-              onClick={() => loadInsights(weeklySummary)}
-              className="w-full"
-            >
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15" /></svg>
-              Refresh Insights
-            </Button>
+      {/* Error */}
+      {(status === 'error' || status === 'rate_limited') && (
+        <div aria-live="polite" className="text-center py-8">
+          <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 ${status === 'rate_limited' ? 'bg-amber-400/10' : 'bg-red-400/10'}`}>
+            <span className="text-2xl" aria-hidden="true">
+              {status === 'rate_limited' ? '⏱️' : '⚠️'}
+            </span>
           </div>
-        )}
-
-        {/* Error state */}
-        {(status === 'error' || status === 'rate_limited') && (
-          <div aria-live="polite" className="text-center py-8">
-            <div className={`w-14 h-14 rounded-2xl flex items-center justify-center mx-auto mb-4 ${status === 'rate_limited' ? 'bg-amber/10' : 'bg-danger/10'}`}>
-              <span className="text-2xl" aria-hidden="true">
-                {status === 'rate_limited' ? '⏱️' : '⚠️'}
-              </span>
-            </div>
-            <p className="text-sm font-medium text-[var(--text-primary)] mb-1">
-              {status === 'rate_limited' ? 'Slow down a little!' : 'Could not load insights'}
-            </p>
-            <p className="text-sm text-[var(--text-muted)] mb-5 max-w-sm mx-auto">{errorMessage}</p>
-            <Button
-              variant="outline"
-              size="md"
-              onClick={() => loadInsights(weeklySummary)}
-            >
-              Try Again
-            </Button>
-          </div>
-        )}
-      </Card>
+          <p className="text-sm font-medium text-white mb-1">
+            {status === 'rate_limited' ? 'Slow down a little!' : 'Could not load insights'}
+          </p>
+          <p className="text-xs text-white/40 mb-5 max-w-xs mx-auto">{errorMessage}</p>
+          <button
+            onClick={() => loadInsights(weeklySummary)}
+            className="bg-white/[0.07] border border-white/[0.12] text-white/70 rounded-xl px-5 py-2.5 text-sm hover:bg-white/[0.10] transition-colors"
+          >
+            Try again
+          </button>
+        </div>
+      )}
     </section>
   );
 }

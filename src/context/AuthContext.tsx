@@ -8,6 +8,7 @@ import {
   FacebookAuthProvider,
   OAuthProvider,
   signInWithPopup,
+  signInAnonymously,
   RecaptchaVerifier,
   signInWithPhoneNumber,
   type User,
@@ -23,6 +24,7 @@ interface AuthContextValue {
   signInWithGoogle: () => Promise<void>;
   signInWithFacebook: () => Promise<void>;
   signInWithApple: () => Promise<void>;
+  signInAsGuest: () => Promise<void>;
   setupRecaptcha: (containerId: string) => void;
   sendPhoneCode: (phoneNumber: string) => Promise<ConfirmationResult>;
   logout: () => Promise<void>;
@@ -155,6 +157,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     await firebaseSignOut(auth);
   }
 
+  async function handleGuestSignIn() {
+    try {
+      await signInAnonymously(auth);
+    } catch (err: any) {
+      throw new Error('Failed to start demo session. Please try again.');
+    }
+  }
+
   const value: AuthContextValue = {
     currentUser,
     loading,
@@ -163,6 +173,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     signInWithGoogle: handleGoogleSignIn,
     signInWithFacebook: handleFacebookSignIn,
     signInWithApple: handleAppleSignIn,
+    signInAsGuest: handleGuestSignIn,
     setupRecaptcha,
     sendPhoneCode,
     logout,

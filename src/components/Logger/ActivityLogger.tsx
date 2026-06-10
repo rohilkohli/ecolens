@@ -1,9 +1,6 @@
 import { useState, useEffect, useRef } from 'react';
 import type { Category } from '../../types';
-import { EMISSION_FACTORS } from '../../services/emissionFactors';
-import CategoryPicker from './CategoryPicker';
-import Button from '../ui/Button';
-import Card from '../ui/Card';
+import { EMISSION_FACTORS, calculateEmission } from '../../services/emissionFactors';
 
 interface ActivityLoggerProps {
   onAdd: (params: {
@@ -20,23 +17,38 @@ interface ToastState {
   message: string;
 }
 
+const CATEGORIES: { id: Category; label: string; icon: string }[] = [
+  { id: 'transport', label: 'Transport', icon: '🚗' },
+  { id: 'food',      label: 'Food',      icon: '🍽️' },
+  { id: 'energy',    label: 'Energy',    icon: '⚡' },
+  { id: 'shopping',  label: 'Shopping',  icon: '🛍️' },
+];
+
 export default function ActivityLogger({ onAdd }: ActivityLoggerProps) {
   const [category, setCategory] = useState<Category>('transport');
   const [subType, setSubType] = useState('');
   const [quantity, setQuantity] = useState('');
   const [note, setNote] = useState('');
   const [quantityError, setQuantityError] = useState('');
+  const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState<ToastState>({ visible: false, message: '' });
   const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     const options = Object.keys(EMISSION_FACTORS[category]);
     setSubType(options[0] ?? '');
+    setQuantityError('');
   }, [category]);
 
   function getUnit(): string {
     if (!subType) return '';
     return EMISSION_FACTORS[category]?.[subType]?.unit ?? '';
+  }
+
+  function getLiveEstimate(): number {
+    const qty = parseFloat(quantity);
+    if (!qty || qty <= 0 || !subType) return 0;
+    return calculateEmission(category, subType, qty);
   }
 
   function showToast(message: string) {
@@ -57,174 +69,191 @@ export default function ActivityLogger({ onAdd }: ActivityLoggerProps) {
       return;
     }
 
+    setSubmitting(true);
     const unit = getUnit();
     try {
       await onAdd({ category, subType, quantity: qty, unit, note });
       setQuantity('');
       setNote('');
-      setQuantityError('');
-      showToast('Activity logged successfully!');
+      showToast('Activity logged! 🌱');
     } catch (err: any) {
       setQuantityError(err.message || 'Failed to save. Please try again.');
+    } finally {
+      setSubmitting(false);
     }
   }
 
   const subTypeOptions = Object.entries(EMISSION_FACTORS[category]);
-  const selectedFactor = EMISSION_FACTORS[category]?.[subType];
+  const liveEstimate = getLiveEstimate();
 
   return (
     <div className="relative">
-      <Card variant="elevated">
-        <form onSubmit={handleSubmit} noValidate aria-label="Activity log form">
-          <h2 className="text-lg font-semibold text-[var(--text-primary)] mb-6">Log an Activity</h2>
+      <form onSubmit={handleSubmit} noValidate aria-label="Activity log form">
 
-          {/* Category Picker */}
-          <div className="mb-6">
-            <CategoryPicker selected={category} onChange={cat => { setCategory(cat); setQuantityError(''); }} />
-          </div>
+        {/* Category chips — horizontal scroll */}
+        <div className="flex gap-2 overflow-x-auto pb-1 mb-5 scrollbar-hide" role="group" aria-label="Category">
+          {CATEGORIES.map(cat => {
+            const isActive = cat.id === category;
+            return (
+              <button
+                key={cat.id}
+                type="button"
+                onClick={() => setCategory(cat.id)}
+                className={`flex items-center gap-1.5 px-3 py-2 rounded-lg border text-xs font-medium whitespace-nowrap transition-colors flex-shrink-0
+                  ${isActive
+                    ? 'bg-[#2DC878]/15 border-[#2DC878]/40 text-[#2DC878]'
+                    : 'bg-white/5 border-white/10 text-white/50 hover:text-white/70 hover:bg-white/8'
+                  }`}
+                aria-pressed={isActive}
+              >
+                <span aria-hidden="true">{cat.icon}</span>
+                {cat.label}
+              </button>
+            );
+          })}
+        </div>
 
-          {/* Activity Type */}
-          <div className="mb-5">
-            <label htmlFor="activity-type" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-              Activity Type
-            </label>
-            <select
-              id="activity-type"
-              value={subType}
-              onChange={e => setSubType(e.target.value)}
-              className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--input-bg)] px-4 py-3
-                         text-sm text-[var(--text-primary)] min-h-11
-                         focus:border-leaf focus:ring-2 focus:ring-leaf/10 focus:outline-none
-                         transition-all duration-200 appearance-none cursor-pointer"
-              style={{ backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='%2394A3B8'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`, backgroundRepeat: 'no-repeat', backgroundPosition: 'right 12px center', backgroundSize: '16px' }}
-              aria-label="Activity type"
-            >
-              {subTypeOptions.map(([key, factor]) => (
-                <option key={key} value={key}>{factor.label}</option>
-              ))}
-            </select>
-            {selectedFactor && (
-              <p className="mt-1.5 text-xs text-[var(--text-muted)]">{selectedFactor.description}</p>
-            )}
-          </div>
-
-          {/* Quantity + Unit row */}
-          <div className="grid grid-cols-2 gap-3 mb-5">
-            <div>
-              <label htmlFor="quantity" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                Quantity
-              </label>
-              <input
-                id="quantity"
-                type="number"
-                min="0.01"
-                step="0.01"
-                value={quantity}
-                onChange={e => { setQuantity(e.target.value); setQuantityError(''); }}
-                placeholder="e.g. 15"
-                aria-invalid={!!quantityError}
-                aria-describedby={quantityError ? 'quantity-error' : undefined}
-                className={`w-full rounded-xl border px-4 py-3 text-sm text-[var(--text-primary)] min-h-11
-                            transition-all duration-200
-                            focus:ring-2 focus:outline-none
-                            ${quantityError
-                              ? 'border-danger bg-danger/5 focus:border-danger focus:ring-danger/10'
-                              : 'border-[var(--border-color)] bg-[var(--input-bg)] focus:border-leaf focus:ring-leaf/10'
-                            }`}
-              />
-            </div>
-            <div>
-              <label htmlFor="unit-display" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-                Unit
-              </label>
-              <input
-                id="unit-display"
-                type="text"
-                value={getUnit()}
-                readOnly
-                aria-label="Unit (read only)"
-                className="w-full rounded-xl border border-[var(--border-subtle)] bg-[var(--bg-card-hover)] px-4 py-3
-                           text-sm text-[var(--text-muted)] min-h-11 cursor-default"
-              />
-            </div>
-          </div>
-
-          {/* Quantity error */}
-          {quantityError && (
-            <div
-              id="quantity-error"
-              role="alert"
-              aria-live="polite"
-              className="mb-5 flex items-center gap-2 rounded-xl bg-danger/5 border border-danger/15 px-4 py-3 animate-scale-in"
-            >
-              <svg className="w-4 h-4 text-danger flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              <p className="text-sm text-danger font-medium">{quantityError}</p>
-            </div>
+        {/* Activity Type */}
+        <div className="mb-4">
+          <label htmlFor="activity-type" className="block text-xs font-medium text-white/50 mb-2 uppercase tracking-wider">
+            Activity type
+          </label>
+          <select
+            id="activity-type"
+            value={subType}
+            onChange={e => setSubType(e.target.value)}
+            className="w-full rounded-xl border border-white/[0.12] bg-white/[0.06] px-4 py-3
+                       text-sm text-white min-h-11
+                       focus:border-[#2DC878]/40 focus:ring-2 focus:ring-[#2DC878]/10 focus:outline-none
+                       transition-all duration-200 appearance-none cursor-pointer"
+            style={{
+              backgroundImage: `url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 24 24' stroke='rgba(255,255,255,0.3)'%3E%3Cpath stroke-linecap='round' stroke-linejoin='round' stroke-width='2' d='M19 9l-7 7-7-7'/%3E%3C/svg%3E")`,
+              backgroundRepeat: 'no-repeat',
+              backgroundPosition: 'right 12px center',
+              backgroundSize: '16px',
+            }}
+            aria-label="Activity type"
+          >
+            {subTypeOptions.map(([key, factor]) => (
+              <option key={key} value={key} style={{ background: '#111827', color: '#fff' }}>
+                {factor.label}
+              </option>
+            ))}
+          </select>
+          {subType && EMISSION_FACTORS[category]?.[subType] && (
+            <p className="mt-1.5 text-[11px] text-white/30">
+              {EMISSION_FACTORS[category][subType].description}
+            </p>
           )}
+        </div>
 
-          {/* Estimated emission preview */}
-          {quantity && parseFloat(quantity) > 0 && selectedFactor && (
-            <div className="mb-5 rounded-xl bg-leaf/5 border border-leaf/15 px-4 py-3 flex items-center gap-3 animate-scale-in">
-              <div className="w-8 h-8 rounded-lg gradient-leaf flex items-center justify-center flex-shrink-0">
-                <span className="text-sm text-white" aria-hidden="true">🌱</span>
-              </div>
-              <div>
-                <p className="text-xs text-[var(--text-muted)]">Estimated emission</p>
-                <p className="text-sm text-leaf font-bold tabular-nums">
-                  {(selectedFactor.co2e_per_unit * parseFloat(quantity)).toFixed(3)} kg CO₂e
-                </p>
-              </div>
-            </div>
-          )}
-
-          {/* Note */}
-          <div className="mb-6">
-            <label htmlFor="activity-note" className="block text-sm font-medium text-[var(--text-secondary)] mb-2">
-              Note <span className="text-[var(--text-muted)] font-normal">(optional)</span>
+        {/* Quantity + Unit */}
+        <div className="grid grid-cols-2 gap-3 mb-4">
+          <div>
+            <label htmlFor="quantity" className="block text-xs font-medium text-white/50 mb-2 uppercase tracking-wider">
+              Quantity
             </label>
             <input
-              id="activity-note"
-              type="text"
-              maxLength={200}
-              value={note}
-              onChange={e => setNote(e.target.value)}
-              placeholder="e.g. Drove to office"
-              className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--input-bg)] px-4 py-3
-                         text-sm text-[var(--text-primary)] min-h-11
-                         focus:border-leaf focus:ring-2 focus:ring-leaf/10 focus:outline-none
-                         transition-all duration-200"
+              id="quantity"
+              type="number"
+              min="0.01"
+              step="0.01"
+              value={quantity}
+              onChange={e => { setQuantity(e.target.value); setQuantityError(''); }}
+              placeholder="e.g. 15"
+              aria-invalid={!!quantityError}
+              className={`w-full rounded-xl border px-4 py-3 text-sm text-white min-h-11
+                          bg-white/[0.06] transition-all duration-200
+                          focus:ring-2 focus:outline-none
+                          ${quantityError
+                            ? 'border-red-400/40 focus:border-red-400/60 focus:ring-red-400/10'
+                            : 'border-white/[0.12] focus:border-[#2DC878]/40 focus:ring-[#2DC878]/10'
+                          }`}
             />
-            <p className="mt-1.5 text-xs text-[var(--text-muted)] text-right tabular-nums">{note.length}/200</p>
           </div>
+          <div>
+            <label htmlFor="unit-display" className="block text-xs font-medium text-white/50 mb-2 uppercase tracking-wider">
+              Unit
+            </label>
+            <input
+              id="unit-display"
+              type="text"
+              value={getUnit()}
+              readOnly
+              aria-label="Unit (read only)"
+              className="w-full rounded-xl border border-white/[0.07] bg-white/[0.03] px-4 py-3
+                         text-sm text-white/40 min-h-11 cursor-default"
+            />
+          </div>
+        </div>
 
-          {/* Submit */}
-          <Button
-            type="submit"
-            variant="primary"
-            size="lg"
-            className="w-full"
+        {/* Quantity error */}
+        {quantityError && (
+          <div
+            role="alert"
+            aria-live="polite"
+            className="mb-4 flex items-center gap-2 rounded-xl bg-red-400/8 border border-red-400/20 px-3 py-2.5 animate-scale-in"
           >
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 4v16m8-8H4" /></svg>
-            Log Activity
-          </Button>
-        </form>
-      </Card>
+            <span className="text-red-400 text-xs">⚠️</span>
+            <p className="text-xs text-red-400">{quantityError}</p>
+          </div>
+        )}
 
-      {/* Toast notification */}
+        {/* Live CO₂e preview */}
+        {liveEstimate > 0 && (
+          <div className="bg-[#2DC878]/8 border border-[#2DC878]/20 rounded-xl p-3 mb-4 animate-scale-in">
+            <p className="text-white/35 text-[9px] mb-1 uppercase tracking-wider">Estimated emission</p>
+            <p className="text-2xl font-bold text-[#2DC878]">
+              {liveEstimate.toFixed(3)}
+              <span className="text-sm font-normal text-white/40 ml-1">kg CO₂e</span>
+            </p>
+          </div>
+        )}
+
+        {/* Note */}
+        <div className="mb-5">
+          <label htmlFor="activity-note" className="block text-xs font-medium text-white/50 mb-2 uppercase tracking-wider">
+            Note <span className="text-white/25 font-normal normal-case">(optional)</span>
+          </label>
+          <input
+            id="activity-note"
+            type="text"
+            maxLength={200}
+            value={note}
+            onChange={e => setNote(e.target.value)}
+            placeholder="e.g. Drove to office"
+            className="w-full rounded-xl border border-white/[0.12] bg-white/[0.06] px-4 py-3
+                       text-sm text-white min-h-11
+                       focus:border-[#2DC878]/40 focus:ring-2 focus:ring-[#2DC878]/10 focus:outline-none
+                       transition-all duration-200 placeholder:text-white/25"
+          />
+          <p className="mt-1 text-[10px] text-white/25 text-right">{note.length}/200</p>
+        </div>
+
+        {/* Submit */}
+        <button
+          type="submit"
+          disabled={submitting}
+          className="w-full bg-[#2DC878] text-[#0B1A12] font-semibold rounded-xl py-3.5 text-sm
+                     hover:bg-[#25B066] transition-colors active:scale-[0.98] disabled:opacity-60"
+        >
+          {submitting ? 'Saving...' : 'Log Activity'}
+        </button>
+      </form>
+
+      {/* Toast */}
       {toast.visible && (
         <div
           aria-live="polite"
           aria-atomic="true"
           role="status"
-          className="fixed bottom-20 md:bottom-6 right-4 z-50 gradient-leaf text-white px-5 py-3.5 rounded-2xl shadow-lg shadow-leaf/20
-                     animate-slide-in-right flex items-center gap-3"
+          className="fixed bottom-24 left-4 right-4 z-50 bg-[#1a2e20] border border-[#2DC878]/30 text-white px-4 py-3 rounded-xl
+                     animate-slide-up flex items-center gap-3 shadow-xl"
         >
-          <div className="w-6 h-6 bg-white/20 rounded-full flex items-center justify-center">
-            <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" /></svg>
+          <div className="w-6 h-6 bg-[#2DC878]/20 rounded-full flex items-center justify-center flex-shrink-0">
+            <span className="text-[#2DC878] text-xs">✓</span>
           </div>
-          <span className="text-sm font-medium">{toast.message}</span>
+          <span className="text-sm font-medium text-[#2DC878]">{toast.message}</span>
         </div>
       )}
     </div>

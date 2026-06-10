@@ -91,6 +91,21 @@ export default function ChallengeBoard() {
         if (isMounted) setChallenges(INITIAL_CHALLENGES);
         return;
       }
+      // Anonymous users: use localStorage
+      if (currentUser.isAnonymous) {
+        try {
+          const raw = localStorage.getItem('ecolens_demo_challenges');
+          if (raw && isMounted) {
+            const completedIds = new Set<string>(JSON.parse(raw));
+            setChallenges(INITIAL_CHALLENGES.map(c => ({ ...c, completed: completedIds.has(c.id) })));
+          } else if (isMounted) {
+            setChallenges(INITIAL_CHALLENGES);
+          }
+        } catch {
+          if (isMounted) setChallenges(INITIAL_CHALLENGES);
+        }
+        return;
+      }
       try {
         const doc = await getDocument<{ completedIds: string[] }>(`users/${currentUser.uid}/data`, 'challenges');
         if (isMounted && doc?.completedIds) {
@@ -119,8 +134,14 @@ export default function ChallengeBoard() {
       return newChallenges;
     });
 
+    const completedIds = newChallenges.filter(c => c.completed).map(c => c.id);
+
+    if (currentUser.isAnonymous) {
+      localStorage.setItem('ecolens_demo_challenges', JSON.stringify(completedIds));
+      return;
+    }
+
     try {
-      const completedIds = newChallenges.filter(c => c.completed).map(c => c.id);
       await createDocument(`users/${currentUser.uid}/data`, 'challenges', { completedIds });
     } catch (err) {
       console.error('Failed to save challenge progress:', err);
@@ -136,56 +157,42 @@ export default function ChallengeBoard() {
   return (
     <section aria-labelledby="challenges-heading">
       {/* Stats banner */}
-      <Card variant="elevated" className="mb-6">
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-5">
+      <div className="bg-white/[0.04] border border-white/[0.07] rounded-xl p-4 mb-5">
+        <div className="flex items-center justify-between mb-4">
           <div>
-            <h2 id="challenges-heading" className="text-xl font-bold text-[var(--text-primary)]">
+            <h2 id="challenges-heading" className="text-base font-semibold text-white">
               Your Progress
             </h2>
-            <p className="text-sm text-[var(--text-muted)] mt-0.5">
-              Complete challenges to reduce your footprint
-            </p>
+            <p className="text-white/40 text-xs mt-0.5">Complete challenges to reduce your footprint</p>
           </div>
-
-          <div className="flex items-center gap-6">
+          <div className="flex items-center gap-4">
             <div className="text-center">
-              <p className="text-2xl font-bold gradient-text tabular-nums">{completedCount}</p>
-              <p className="text-[10px] text-[var(--text-muted)] font-medium uppercase tracking-wide">Completed</p>
+              <p className="text-xl font-bold text-[#2DC878] tabular-nums">{completedCount}</p>
+              <p className="text-[9px] text-white/30 uppercase tracking-wide">Done</p>
             </div>
-            <div className="w-px h-10 bg-[var(--border-subtle)]" aria-hidden="true" />
+            <div className="w-px h-8 bg-white/10" aria-hidden="true" />
             <div className="text-center">
-              <p className="text-2xl font-bold gradient-text tabular-nums">{totalSaving.toFixed(1)}</p>
-              <p className="text-[10px] text-[var(--text-muted)] font-medium uppercase tracking-wide">kg CO₂e saved</p>
-            </div>
-            <div className="w-px h-10 bg-[var(--border-subtle)]" aria-hidden="true" />
-            <div className="text-center">
-              <p className="text-2xl font-bold text-[var(--text-secondary)] tabular-nums">{challenges.length}</p>
-              <p className="text-[10px] text-[var(--text-muted)] font-medium uppercase tracking-wide">Total</p>
+              <p className="text-xl font-bold text-[#2DC878] tabular-nums">{totalSaving.toFixed(1)}</p>
+              <p className="text-[9px] text-white/30 uppercase tracking-wide">kg saved</p>
             </div>
           </div>
         </div>
-
         {/* Progress bar */}
-        <div className="mt-5">
-          <div className="flex justify-between text-xs text-[var(--text-muted)] mb-2">
-            <span className="font-medium">Progress</span>
-            <span className="tabular-nums">{completedCount}/{challenges.length} challenges</span>
-          </div>
+        <div
+          className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden"
+          role="progressbar"
+          aria-valuenow={completedCount}
+          aria-valuemin={0}
+          aria-valuemax={challenges.length}
+          aria-label={`${completedCount} of ${challenges.length} challenges completed`}
+        >
           <div
-            className="h-2.5 bg-[var(--bg-card-hover)] rounded-full overflow-hidden"
-            role="progressbar"
-            aria-valuenow={completedCount}
-            aria-valuemin={0}
-            aria-valuemax={challenges.length}
-            aria-label={`${completedCount} of ${challenges.length} challenges completed`}
-          >
-            <div
-              className="h-full bg-gradient-to-r from-leaf to-leaf-light rounded-full transition-all duration-700 ease-out"
-              style={{ width: `${progressPct}%` }}
-            />
-          </div>
+            className="h-full rounded-full transition-all duration-700 ease-out"
+            style={{ width: `${progressPct}%`, background: '#2DC878' }}
+          />
         </div>
-      </Card>
+        <p className="text-white/25 text-[9px] mt-1.5 text-right">{completedCount}/{challenges.length} challenges</p>
+      </div>
 
       {/* Challenge grid */}
       <div

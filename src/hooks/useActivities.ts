@@ -4,6 +4,7 @@ import { calculateEmission } from '../services/emissionFactors';
 import { sanitizeText } from '../utils/validators';
 import { useAuth } from '../context/AuthContext';
 import { queryDocuments, createDocument, deleteDocument } from '../lib/firestore';
+import { loadDemoActivities, saveDemoActivities } from '../services/demoData';
 
 function generateId(): string {
   return `${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -15,12 +16,24 @@ export function useActivities() {
   const [error, setError] = useState<string | null>(null);
   const { currentUser } = useAuth();
 
+  const isAnonymous = currentUser?.isAnonymous ?? false;
+
   const loadActivities = useCallback(async () => {
     if (!currentUser) {
       setActivities([]);
       setLoading(false);
       return;
     }
+
+    // Anonymous users: load from localStorage (seeded demo data)
+    if (isAnonymous) {
+      const demo = loadDemoActivities();
+      setActivities(demo);
+      setLoading(false);
+      return;
+    }
+
+    // Registered users: load from Firestore
     try {
       setLoading(true);
       setError(null);
@@ -36,7 +49,7 @@ export function useActivities() {
     } finally {
       setLoading(false);
     }
-  }, [currentUser]);
+  }, [currentUser, isAnonymous]);
 
   useEffect(() => {
     loadActivities();
@@ -63,7 +76,14 @@ export function useActivities() {
       note: sanitizeText(params.note),
     };
 
-    setActivities(prev => [activity, ...prev]);
+    const updated = [activity, ...activities];
+    setActivities(updated);
+
+    if (isAnonymous) {
+      // Save to localStorage for anonymous users
+      saveDemoActivities(updated);
+      return;
+    }
 
     try {
       await createDocument(`users/${currentUser.uid}/activities`, activity.id, activity);
@@ -77,7 +97,13 @@ export function useActivities() {
   async function removeActivity(id: string) {
     if (!currentUser) return;
     const previous = [...activities];
-    setActivities(prev => prev.filter(a => a.id !== id));
+    const updated = activities.filter(a => a.id !== id);
+    setActivities(updated);
+
+    if (isAnonymous) {
+      saveDemoActivities(updated);
+      return;
+    }
 
     try {
       await deleteDocument(`users/${currentUser.uid}/activities`, id);

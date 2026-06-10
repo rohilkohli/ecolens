@@ -30,7 +30,7 @@ export default function AuthPage() {
 
   useEffect(() => {
     if (currentUser) {
-      navigate('/log');
+      navigate('/app');
     }
     setupRecaptcha('recaptcha-container');
   }, [currentUser, navigate, setupRecaptcha]);
@@ -79,7 +79,7 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-10 gradient-leaf-radial">
+    <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-[#0B0F1A]">
       <div className="w-full max-w-md animate-fade-in-up">
         {/* Brand header */}
         <div className="text-center mb-8">
