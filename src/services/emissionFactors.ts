@@ -37,6 +37,7 @@ export const EMISSION_FACTORS: Record<EmissionCategory, Record<string, EmissionF
   },
 } as const;
 
+/** Calculates CO₂e emission in kg for a given activity using IPCC AR6 factors. */
 export function calculateEmission(
   category: EmissionCategory,
   subType: string,
