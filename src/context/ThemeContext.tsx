@@ -1,3 +1,9 @@
+/**
+ * Theme context providing light/dark mode toggle with system preference detection.
+ * Persists user choice to localStorage and applies `data-theme` attribute to `<html>`.
+ * @module context/ThemeContext
+ */
+
 import { createContext, useContext, useEffect, useState, type ReactNode } from 'react';
 
 type Theme = 'light' | 'dark';
@@ -12,7 +18,8 @@ const ThemeContext = createContext<ThemeContextValue>({
   toggleTheme: () => {},
 });
 
-export function useTheme() {
+/** Hook to access the current theme and toggle function. */
+export function useTheme(): ThemeContextValue {
   return useContext(ThemeContext);
 }
 
@@ -26,6 +33,7 @@ function getInitialTheme(): Theme {
   }
 }
 
+/** Provider that manages light/dark theme state and DOM attribute. */
 export function ThemeProvider({ children }: { children: ReactNode }) {
   const [theme, setTheme] = useState<Theme>(getInitialTheme);
 

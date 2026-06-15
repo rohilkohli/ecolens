@@ -1,6 +1,6 @@
 /**
  * Professional SaaS-style footer component.
- * Displays company info, product links, resources, and legal information.
+ * Adapts to light/dark theme via CSS variables.
  */
 
 const PRODUCT_LINKS = [
@@ -17,41 +17,29 @@ const RESOURCE_LINKS = [
   { label: 'Google AI Studio', href: 'https://aistudio.google.com/' },
 ] as const;
 
-const TECH_STACK = [
-  'React 19', 'TypeScript 5', 'Firebase', 'Gemini AI', 'Tailwind CSS', 'Vite 8',
-] as const;
-
 export default function ProfessionalFooter() {
   return (
-    <footer className="border-t border-white/[0.06] bg-[#070A12] px-4 py-12 mt-auto" role="contentinfo">
+    <footer className="border-t border-[var(--border-color)] bg-[var(--bg-card)] px-4 py-12" role="contentinfo">
       <div className="max-w-6xl mx-auto">
-        {/* Main grid */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-10">
-          {/* Brand column */}
+          {/* Brand */}
           <div className="col-span-2 md:col-span-1">
             <div className="flex items-center gap-2 mb-3">
-              <div className="w-2 h-2 rounded-full bg-[#2DC878]" />
-              <span className="text-[#2DC878] text-sm font-semibold">EcoLens</span>
+              <span className="text-xl">🌿</span>
+              <span className="font-bold gradient-text">EcoLens</span>
             </div>
-            <p className="text-white/40 text-xs leading-relaxed mb-4">
+            <p className="text-[var(--text-muted)] text-xs leading-relaxed">
               Track, understand, and reduce your personal carbon footprint with AI-powered insights.
             </p>
-            <div className="flex flex-wrap gap-1.5">
-              {TECH_STACK.map(tech => (
-                <span key={tech} className="text-[9px] text-white/30 bg-white/[0.04] border border-white/[0.06] rounded px-1.5 py-0.5">
-                  {tech}
-                </span>
-              ))}
-            </div>
           </div>
 
-          {/* Product column */}
+          {/* Product */}
           <div>
-            <h3 className="text-white/60 text-[10px] font-semibold uppercase tracking-wider mb-3">Product</h3>
+            <h3 className="text-[var(--text-secondary)] text-xs font-semibold uppercase tracking-wider mb-3">Product</h3>
             <ul className="space-y-2">
               {PRODUCT_LINKS.map(link => (
                 <li key={link.label}>
-                  <a href={link.href} className="text-white/40 text-xs hover:text-white/70 transition-colors">
+                  <a href={link.href} className="text-[var(--text-muted)] text-sm hover:text-[var(--text-primary)] transition-colors">
                     {link.label}
                   </a>
                 </li>
@@ -59,18 +47,13 @@ export default function ProfessionalFooter() {
             </ul>
           </div>
 
-          {/* Resources column */}
+          {/* Resources */}
           <div>
-            <h3 className="text-white/60 text-[10px] font-semibold uppercase tracking-wider mb-3">Resources</h3>
+            <h3 className="text-[var(--text-secondary)] text-xs font-semibold uppercase tracking-wider mb-3">Resources</h3>
             <ul className="space-y-2">
               {RESOURCE_LINKS.map(link => (
                 <li key={link.label}>
-                  <a
-                    href={link.href}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="text-white/40 text-xs hover:text-white/70 transition-colors"
-                  >
+                  <a href={link.href} target="_blank" rel="noopener noreferrer" className="text-[var(--text-muted)] text-sm hover:text-[var(--text-primary)] transition-colors">
                     {link.label}
                   </a>
                 </li>
@@ -78,28 +61,26 @@ export default function ProfessionalFooter() {
             </ul>
           </div>
 
-          {/* Data & methodology column */}
+          {/* Tech */}
           <div>
-            <h3 className="text-white/60 text-[10px] font-semibold uppercase tracking-wider mb-3">Methodology</h3>
-            <ul className="space-y-2 text-white/40 text-xs">
-              <li>IPCC AR6 emission factors</li>
-              <li>CEA 2023 India grid data</li>
-              <li>Gemini 2.5 Flash AI model</li>
-              <li>Real-time personalisation</li>
+            <h3 className="text-[var(--text-secondary)] text-xs font-semibold uppercase tracking-wider mb-3">Built With</h3>
+            <ul className="space-y-2 text-[var(--text-muted)] text-sm">
+              <li>React 19 + TypeScript 5</li>
+              <li>Firebase Auth & Firestore</li>
+              <li>Gemini 2.5 Flash AI</li>
+              <li>Google Maps Platform</li>
             </ul>
           </div>
         </div>
 
         {/* Bottom bar */}
-        <div className="pt-6 border-t border-white/[0.06] flex flex-col sm:flex-row items-center justify-between gap-3">
-          <p className="text-white/25 text-[10px]">
-            &copy; {new Date().getFullYear()} EcoLens. Built for PromptWars Virtual · Hack2Skill × Google for Developers.
+        <div className="pt-6 border-t border-[var(--border-color)] flex flex-col sm:flex-row items-center justify-between gap-3">
+          <p className="text-[var(--text-muted)] text-xs">
+            &copy; {new Date().getFullYear()} EcoLens · PromptWars Virtual · Hack2Skill × Google for Developers
           </p>
-          <div className="flex items-center gap-4 text-white/25 text-[10px]">
-            <span>Privacy-first: data stored locally or in your Firebase account</span>
-            <span>·</span>
-            <span>MIT License</span>
-          </div>
+          <p className="text-[var(--text-muted)] text-xs">
+            Privacy-first · MIT License
+          </p>
         </div>
       </div>
     </footer>

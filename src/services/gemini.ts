@@ -214,30 +214,44 @@ User emission summary (past 7 days):
   `.trim();
 
   const ai = new GoogleGenAI({ apiKey });
+  const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash'] as const;
 
   let fullText = '';
-  try {
-    const stream = await retryWithBackoff(
-      () =>
-        ai.models.generateContentStream({
-          model: 'gemini-2.5-flash',
-          contents: userMessage,
-          config: {
-            systemInstruction: SYSTEM_PROMPT,
-            temperature: 0.4,
-            maxOutputTokens: 800,
-          },
-        }),
-      3,
-      1000,
-      2
-    );
+  let lastError: unknown = null;
 
-    for await (const chunk of stream) {
-      fullText += chunk.text ?? '';
+  for (const model of MODELS) {
+    fullText = '';
+    try {
+      const stream = await retryWithBackoff(
+        () =>
+          ai.models.generateContentStream({
+            model,
+            contents: userMessage,
+            config: {
+              systemInstruction: SYSTEM_PROMPT,
+              temperature: 0.4,
+              maxOutputTokens: 8000,
+              responseMimeType: 'application/json',
+            },
+          }),
+        3,
+        1000,
+        2
+      );
+
+      for await (const chunk of stream) {
+        fullText += chunk.text ?? '';
+      }
+      lastError = null;
+      break;
+    } catch (err: unknown) {
+      lastError = err;
+      if (!isTransientError(err)) break;
     }
-  } catch (err: any) {
-    const friendlyMessage = cleanErrorMessage(err);
+  }
+
+  if (lastError) {
+    const friendlyMessage = cleanErrorMessage(lastError);
     if (friendlyMessage === 'rate_limited') {
       throw new Error('rate_limited');
     }

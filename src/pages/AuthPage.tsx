@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import Card from '../components/ui/Card';
 import Button from '../components/ui/Button';
 
 export default function AuthPage() {
@@ -79,14 +78,29 @@ export default function AuthPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-[#0B0F1A]">
-      <div className="w-full max-w-md animate-fade-in-up">
+    <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-[var(--bg)] relative overflow-hidden">
+      {/* Animated background orbs */}
+      <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
+        <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full opacity-40 animate-gradient" style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.3), transparent 70%)', filter: 'blur(80px)' }} />
+        <div className="absolute bottom-[-20%] right-[-10%] w-[400px] h-[400px] rounded-full opacity-30 animate-gradient" style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.25), transparent 70%)', filter: 'blur(70px)', animationDelay: '2s', animationDirection: 'reverse' }} />
+        <div className="absolute top-[40%] right-[20%] w-[300px] h-[300px] rounded-full opacity-20 animate-gradient" style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.2), transparent 70%)', filter: 'blur(60px)', animationDelay: '4s' }} />
+        {/* Floating particles */}
+        <div className="absolute top-[20%] left-[15%] w-2 h-2 rounded-full bg-[var(--accent)] opacity-30 animate-float" />
+        <div className="absolute top-[60%] left-[80%] w-1.5 h-1.5 rounded-full bg-[var(--accent)] opacity-20 animate-float" style={{ animationDelay: '1s' }} />
+        <div className="absolute top-[80%] left-[30%] w-1 h-1 rounded-full bg-sky-400 opacity-25 animate-float" style={{ animationDelay: '2s' }} />
+        <div className="absolute top-[10%] right-[25%] w-1.5 h-1.5 rounded-full bg-purple-400 opacity-20 animate-float" style={{ animationDelay: '1.5s' }} />
+        <div className="absolute bottom-[30%] left-[60%] w-2 h-2 rounded-full bg-[var(--accent)] opacity-15 animate-float" style={{ animationDelay: '3s' }} />
+        {/* Grid mesh overlay */}
+        <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'linear-gradient(var(--accent) 1px, transparent 1px), linear-gradient(90deg, var(--accent) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
+      </div>
+
+      <div className="w-full max-w-md animate-fade-in-up relative z-10">
         {/* Brand header */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl gradient-leaf shadow-lg shadow-leaf/20 mb-5 animate-float">
+          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl gradient-bg shadow-lg mb-5 animate-float" style={{ boxShadow: '0 8px 30px rgba(16,185,129,0.3)' }}>
             <span className="text-4xl" aria-hidden="true">🌿</span>
           </div>
-          <h1 className="text-3xl font-bold text-[var(--text-primary)]">
+          <h1 className="text-3xl font-bold text-[var(--text)]">
             Welcome to <span className="gradient-text">EcoLens</span>
           </h1>
           <p className="text-[var(--text-secondary)] mt-2 text-sm">
@@ -94,7 +108,7 @@ export default function AuthPage() {
           </p>
         </div>
 
-        <Card variant="elevated" padding="lg">
+        <div className="liquid-glass p-6 sm:p-8">
           {error && (
             <div className="mb-5 p-3.5 bg-danger/5 border border-danger/20 text-danger text-sm rounded-xl flex items-center gap-2 animate-scale-in">
               <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -109,26 +123,26 @@ export default function AuthPage() {
               <>
                 {!confirmationResult ? (
                   <div>
-                    <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5">Phone Number</label>
+                    <label className="block text-sm font-medium text-[var(--text)] mb-1.5">Phone Number</label>
                     <input
                       type="tel"
                       required
                       value={phone}
                       onChange={(e) => setPhone(e.target.value)}
                       placeholder="+1234567890"
-                      className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--input-bg)] px-4 py-3 text-sm text-[var(--text-primary)] transition-all duration-200 focus:border-leaf focus:ring-2 focus:ring-leaf/10 focus:outline-none"
+                      className="input-glass"
                     />
                   </div>
                 ) : (
                   <div>
-                    <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5">SMS Verification Code</label>
+                    <label className="block text-sm font-medium text-[var(--text)] mb-1.5">SMS Verification Code</label>
                     <input
                       type="text"
                       required
                       value={code}
                       onChange={(e) => setCode(e.target.value)}
                       placeholder="123456"
-                      className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--input-bg)] px-4 py-3 text-sm text-[var(--text-primary)] transition-all duration-200 focus:border-leaf focus:ring-2 focus:ring-leaf/10 focus:outline-none tracking-widest text-center text-lg"
+                      className="input-glass tracking-widest text-center text-lg"
                     />
                   </div>
                 )}
@@ -136,25 +150,25 @@ export default function AuthPage() {
             ) : (
               <>
                 <div>
-                  <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5">Email</label>
+                  <label className="block text-sm font-medium text-[var(--text)] mb-1.5">Email</label>
                   <input
                     type="email"
                     required
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="you@example.com"
-                    className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--input-bg)] px-4 py-3 text-sm text-[var(--text-primary)] transition-all duration-200 focus:border-leaf focus:ring-2 focus:ring-leaf/10 focus:outline-none"
+                    className="input-glass"
                   />
                 </div>
                 <div>
-                  <label className="block text-sm font-medium text-[var(--text-primary)] mb-1.5">Password</label>
+                  <label className="block text-sm font-medium text-[var(--text)] mb-1.5">Password</label>
                   <input
                     type="password"
                     required
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
                     placeholder="••••••••"
-                    className="w-full rounded-xl border border-[var(--border-color)] bg-[var(--input-bg)] px-4 py-3 text-sm text-[var(--text-primary)] transition-all duration-200 focus:border-leaf focus:ring-2 focus:ring-leaf/10 focus:outline-none"
+                    className="input-glass"
                   />
                 </div>
               </>
@@ -188,7 +202,7 @@ export default function AuthPage() {
                 <button
                   type="button"
                   onClick={() => setIsLogin(!isLogin)}
-                  className="text-sm text-[var(--text-secondary)] hover:text-[var(--text-primary)] transition-colors"
+                  className="text-sm text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors"
                 >
                   {isLogin ? "Create an account" : 'Sign in instead'}
                 </button>
@@ -220,7 +234,7 @@ export default function AuthPage() {
               Instagram
             </Button>
           </div>
-        </Card>
+        </div>
       </div>
     </div>
   );

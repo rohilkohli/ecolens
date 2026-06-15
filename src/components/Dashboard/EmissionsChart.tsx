@@ -37,12 +37,12 @@ interface CustomTooltipProps {
   label?: string;
 }
 
-function DarkTooltip({ active, payload, label }: CustomTooltipProps) {
+function ChartTooltip({ active, payload, label }: CustomTooltipProps) {
   if (!active || !payload?.length) return null;
   return (
-    <div className="bg-[#111827] border border-white/10 rounded-xl px-3 py-2 shadow-xl">
-      <p className="text-white/40 text-[9px] mb-0.5">{label}</p>
-      <p className="text-[#2DC878] text-sm font-semibold tabular-nums">
+    <div className="bg-[var(--bg-card)] border border-[var(--border-color)] rounded-lg px-3 py-2 shadow-lg">
+      <p className="text-[var(--text-muted)] text-[9px] mb-0.5">{label}</p>
+      <p className="text-sm font-semibold tabular-nums" style={{ color: 'var(--accent)' }}>
         {payload[0].value.toFixed(2)} kg CO₂e
       </p>
     </div>
@@ -63,24 +63,25 @@ export default function EmissionsChart({ weeklyData, categoryBreakdown }: Emissi
     <div>
       {/* 7-day bar chart */}
       <div role="img" aria-label="7-day CO₂ emissions bar chart">
-        <ResponsiveContainer width="100%" height={80}>
+        <ResponsiveContainer width="100%" height={90}>
           <BarChart data={weeklyData} barCategoryGap="20%">
             <XAxis
               dataKey="date"
-              tick={{ fill: 'rgba(255,255,255,0.25)', fontSize: 9 }}
+              tick={{ fill: 'var(--text-muted)', fontSize: 10 }}
               axisLine={false}
               tickLine={false}
               tickFormatter={(val: string) => DAY_MAP[new Date(val).getDay()] ?? ''}
             />
             <Tooltip
-              content={<DarkTooltip />}
-              cursor={{ fill: 'rgba(45,200,120,0.05)' }}
+              content={<ChartTooltip />}
+              cursor={{ fill: 'var(--bg-card-hover)' }}
             />
-            <Bar dataKey="total" radius={[3, 3, 0, 0]} isAnimationActive animationDuration={600}>
+            <Bar dataKey="total" radius={[4, 4, 0, 0]} isAnimationActive animationDuration={600}>
               {weeklyData.map((_, index) => (
                 <Cell
                   key={index}
-                  fill={index === weeklyData.length - 1 ? '#2DC878' : 'rgba(45,200,120,0.28)'}
+                  fill={index === weeklyData.length - 1 ? 'var(--accent)' : 'var(--accent)'}
+                  fillOpacity={index === weeklyData.length - 1 ? 1 : 0.3}
                 />
               ))}
             </Bar>
@@ -90,7 +91,7 @@ export default function EmissionsChart({ weeklyData, categoryBreakdown }: Emissi
 
       {/* Category breakdown bars */}
       <div className="mt-5 space-y-3">
-        <p className="text-white/25 text-[9px] uppercase tracking-widest">Category breakdown (7 days)</p>
+        <p className="text-[var(--text-muted)] text-[10px] uppercase tracking-wider font-medium">Category breakdown (7 days)</p>
         {(Object.entries(categoryBreakdown) as [Category, number][]).map(([cat, value]) => {
           const config = CATEGORY_CONFIG[cat];
           const pct = maxCategory > 0 ? (value / maxCategory) * 100 : 0;
@@ -99,14 +100,14 @@ export default function EmissionsChart({ weeklyData, categoryBreakdown }: Emissi
               <div className="flex items-center justify-between mb-1">
                 <div className="flex items-center gap-2">
                   <span className="text-sm" aria-hidden="true">{config.icon}</span>
-                  <span className="text-xs text-white/50">{config.label}</span>
+                  <span className="text-xs text-[var(--text-secondary)]">{config.label}</span>
                 </div>
-                <span className="text-xs font-semibold text-white tabular-nums">{value.toFixed(2)} kg</span>
+                <span className="text-xs font-semibold text-[var(--text-primary)] tabular-nums">{value.toFixed(2)} kg</span>
               </div>
-              <div className="h-1.5 bg-white/[0.06] rounded-full overflow-hidden">
+              <div className="h-1.5 bg-[var(--bg-card-hover)] rounded-full overflow-hidden">
                 <div
                   className="h-full rounded-full transition-all duration-700"
-                  style={{ width: `${pct}%`, background: '#2DC878', opacity: 0.7 }}
+                  style={{ width: `${pct}%`, background: 'var(--accent)', opacity: 0.7 }}
                 />
               </div>
             </div>
