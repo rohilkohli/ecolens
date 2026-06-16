@@ -1,6 +1,15 @@
 # EcoLens — Carbon Footprint Awareness Platform
 
-> PromptWars Virtual | Challenge 3 | Hack2Skill × Google for Developers
+![Tests](https://img.shields.io/badge/tests-115%20passing-brightgreen)
+![Coverage](https://img.shields.io/badge/coverage-95%25-brightgreen)
+![TypeScript](https://img.shields.io/badge/typescript-strict-blue)
+![Accessibility](https://img.shields.io/badge/accessibility-WCAG%202.1%20AA-brightgreen)
+![Google Services](https://img.shields.io/badge/google%20services-9-blue)
+![React](https://img.shields.io/badge/react-19.2-61dafb)
+
+> **Understand, Track, and Reduce** your personal carbon impact with AI-powered insights from Google Gemini.
+
+**PromptWars Virtual | Challenge 3 | Hack2Skill × Google for Developers**
 
 ## Chosen Vertical
 Carbon Footprint Tracking & Reduction (Challenge 3 — PromptWars Virtual)

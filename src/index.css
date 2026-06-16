@@ -349,6 +349,14 @@ body {
 @media (max-width: 767px) { main#main-content { padding-bottom: 5rem; } }
 .pb-safe { padding-bottom: env(safe-area-inset-bottom, 0px); }
 
+/* ─── Print styles ─── */
+@media print {
+  header, footer, nav, .skip-link, button { display: none !important; }
+  main { padding: 0 !important; max-width: 100% !important; }
+  .card, .liquid-glass, .stat-glass { box-shadow: none !important; border: 1px solid #E5E7EB !important; }
+  body { background: white !important; color: black !important; }
+}
+
 /* ─── Reduced motion ─── */
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { animation-duration: 0.01ms !important; transition-duration: 0.01ms !important; }
