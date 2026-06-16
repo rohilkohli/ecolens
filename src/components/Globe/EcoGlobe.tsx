@@ -1,13 +1,12 @@
 /**
- * Interactive 3D globe with world map texture showing global CO₂ emission data points.
- * Hovering a region displays its emission info in a tooltip.
+ * Interactive 3D wireframe globe with colored emission data points.
+ * Clean geometric style — no photo textures.
  */
 
 import { useRef, useState, useMemo } from 'react';
-import { Canvas, useFrame, useLoader, type ThreeEvent } from '@react-three/fiber';
+import { Canvas, useFrame, type ThreeEvent } from '@react-three/fiber';
 import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
-import { TextureLoader } from 'three';
 
 interface RegionData {
   name: string;
@@ -53,84 +52,71 @@ function getEmissionColor(co2: number): string {
   return '#EF4444';
 }
 
-const EARTH_MAP_URL = 'https://unpkg.com/three-globe@2.34.1/example/img/earth-blue-marble.jpg';
-const EARTH_TOPOLOGY_URL = 'https://unpkg.com/three-globe@2.34.1/example/img/earth-topology.png';
-
-function GlobeWithMap({ onHover }: { onHover: (region: RegionData | null) => void }) {
-  const globeRef = useRef<THREE.Group>(null);
-  const earthTexture = useLoader(TextureLoader, EARTH_MAP_URL);
-  const bumpTexture = useLoader(TextureLoader, EARTH_TOPOLOGY_URL);
+function WireframeGlobe({ onHover }: { onHover: (region: RegionData | null) => void }) {
+  const groupRef = useRef<THREE.Group>(null);
 
   useFrame(({ clock }) => {
-    if (globeRef.current) {
-      globeRef.current.rotation.y = clock.getElapsedTime() * 0.04;
+    if (groupRef.current) {
+      groupRef.current.rotation.y = clock.getElapsedTime() * 0.08;
     }
   });
 
-  const pointMeshes = useMemo(() => {
-    return REGIONS.map(region => {
-      const pos = latLngToVector3(region.lat, region.lng, 1.015);
-      const color = getEmissionColor(region.co2PerCapita);
-      return { region, pos, color };
-    });
+  const points = useMemo(() => {
+    return REGIONS.map(region => ({
+      region,
+      pos: latLngToVector3(region.lat, region.lng, 1.01),
+      color: getEmissionColor(region.co2PerCapita),
+      size: 0.015 + (region.co2PerCapita / 20) * 0.02,
+    }));
   }, []);
 
-  function handlePointerOver(e: ThreeEvent<PointerEvent>, region: RegionData) {
-    e.stopPropagation();
-    document.body.style.cursor = 'pointer';
-    onHover(region);
-  }
-
-  function handlePointerOut() {
-    document.body.style.cursor = 'default';
-    onHover(null);
-  }
-
   return (
-    <group ref={globeRef}>
-      {/* Earth sphere with real map texture */}
+    <group ref={groupRef}>
+      {/* Main wireframe sphere */}
       <mesh>
-        <sphereGeometry args={[1, 64, 64]} />
-        <meshStandardMaterial
-          map={earthTexture}
-          bumpMap={bumpTexture}
-          bumpScale={0.03}
-          metalness={0.1}
-          roughness={0.7}
-        />
+        <sphereGeometry args={[1, 36, 36]} />
+        <meshBasicMaterial wireframe color="#10B981" opacity={0.12} transparent />
       </mesh>
 
-      {/* Atmosphere glow ring */}
-      <mesh>
-        <sphereGeometry args={[1.02, 64, 64]} />
-        <meshBasicMaterial
-          color="#10B981"
-          opacity={0.04}
-          transparent
-          side={THREE.BackSide}
-        />
+      {/* Second wireframe for depth */}
+      <mesh rotation={[0, Math.PI / 6, 0]}>
+        <sphereGeometry args={[0.99, 18, 18]} />
+        <meshBasicMaterial wireframe color="#10B981" opacity={0.06} transparent />
       </mesh>
 
-      {/* Data point markers */}
-      {pointMeshes.map(({ region, pos, color }) => (
+      {/* Equator ring */}
+      <mesh rotation={[Math.PI / 2, 0, 0]}>
+        <ringGeometry args={[1.005, 1.01, 64]} />
+        <meshBasicMaterial color="#10B981" opacity={0.2} transparent side={THREE.DoubleSide} />
+      </mesh>
+
+      {/* Latitude lines */}
+      {[-60, -30, 30, 60].map(lat => {
+        const r = Math.cos((lat * Math.PI) / 180);
+        const y = Math.sin((lat * Math.PI) / 180);
+        return (
+          <mesh key={lat} position={[0, y, 0]} rotation={[Math.PI / 2, 0, 0]}>
+            <ringGeometry args={[r - 0.002, r + 0.002, 48]} />
+            <meshBasicMaterial color="#10B981" opacity={0.08} transparent side={THREE.DoubleSide} />
+          </mesh>
+        );
+      })}
+
+      {/* Data points */}
+      {points.map(({ region, pos, color, size }) => (
         <group key={region.name} position={pos}>
-          {/* Main dot */}
+          {/* Glowing dot */}
           <mesh
-            onPointerOver={(e) => handlePointerOver(e, region)}
-            onPointerOut={handlePointerOut}
+            onPointerOver={(e: ThreeEvent<PointerEvent>) => { e.stopPropagation(); document.body.style.cursor = 'pointer'; onHover(region); }}
+            onPointerOut={() => { document.body.style.cursor = 'default'; onHover(null); }}
           >
-            <sphereGeometry args={[0.02, 16, 16]} />
+            <sphereGeometry args={[size, 12, 12]} />
             <meshBasicMaterial color={color} />
           </mesh>
-          {/* Outer pulse ring */}
+          {/* Outer glow ring */}
           <mesh>
-            <ringGeometry args={[0.025, 0.04, 24]} />
-            <meshBasicMaterial color={color} opacity={0.5} transparent side={THREE.DoubleSide} />
-          </mesh>
-          {/* Vertical beam */}
-          <mesh position={[0, 0, 0.03]}>
-            <cylinderGeometry args={[0.002, 0.002, 0.04, 8]} />
-            <meshBasicMaterial color={color} opacity={0.6} transparent />
+            <ringGeometry args={[size + 0.005, size + 0.015, 16]} />
+            <meshBasicMaterial color={color} opacity={0.4} transparent side={THREE.DoubleSide} />
           </mesh>
         </group>
       ))}
@@ -142,81 +128,41 @@ export default function EcoGlobe() {
   const [hoveredRegion, setHoveredRegion] = useState<RegionData | null>(null);
 
   return (
-    <div className="relative w-full aspect-square max-w-[520px] mx-auto">
-      {/* Ambient glow behind globe */}
+    <div className="relative w-full aspect-square max-w-[480px] mx-auto">
+      {/* Ambient glow */}
       <div className="absolute inset-0 flex items-center justify-center pointer-events-none" aria-hidden="true">
-        <div className="w-[70%] h-[70%] rounded-full" style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.12) 0%, transparent 70%)', filter: 'blur(30px)' }} />
+        <div className="w-[60%] h-[60%] rounded-full" style={{ background: 'radial-gradient(circle, var(--accent-soft) 0%, transparent 70%)' }} />
       </div>
 
-      {/* 3D Canvas */}
-      <Canvas
-        camera={{ position: [0, 0, 2.6], fov: 42 }}
-        style={{ background: 'transparent' }}
-        gl={{ antialias: true, alpha: true }}
-      >
-        <ambientLight intensity={1.2} />
-        <directionalLight position={[5, 3, 5]} intensity={0.8} />
-        <directionalLight position={[-3, -2, -3]} intensity={0.3} />
-        <GlobeWithMap onHover={setHoveredRegion} />
-        <OrbitControls
-          enableZoom={false}
-          enablePan={false}
-          autoRotate
-          autoRotateSpeed={0.2}
-          minPolarAngle={Math.PI / 3.5}
-          maxPolarAngle={Math.PI * 2.5 / 3.5}
-        />
+      <Canvas camera={{ position: [0, 0, 2.5], fov: 45 }} style={{ background: 'transparent' }} gl={{ antialias: true, alpha: true }}>
+        <WireframeGlobe onHover={setHoveredRegion} />
+        <OrbitControls enableZoom={false} enablePan={false} autoRotate autoRotateSpeed={0.3} minPolarAngle={Math.PI / 3.5} maxPolarAngle={Math.PI * 2.5 / 3.5} />
       </Canvas>
 
-      {/* Tooltip card */}
+      {/* Tooltip */}
       {hoveredRegion && (
-        <div className="absolute top-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-64 liquid-glass p-4 animate-scale-in z-10">
-          <div className="flex items-center gap-2 mb-3">
-            <div
-              className="w-3 h-3 rounded-full shadow-sm"
-              style={{ background: getEmissionColor(hoveredRegion.co2PerCapita), boxShadow: `0 0 8px ${getEmissionColor(hoveredRegion.co2PerCapita)}` }}
-            />
+        <div className="absolute top-4 left-4 right-4 sm:left-auto sm:right-4 sm:w-56 card p-4 animate-scale-in z-10">
+          <div className="flex items-center gap-2 mb-2">
+            <div className="w-3 h-3 rounded-full" style={{ background: getEmissionColor(hoveredRegion.co2PerCapita), boxShadow: `0 0 6px ${getEmissionColor(hoveredRegion.co2PerCapita)}` }} />
             <h3 className="font-bold text-sm text-[var(--text)]">{hoveredRegion.name}</h3>
           </div>
-          <div className="space-y-2">
-            <div className="flex justify-between text-xs">
-              <span className="text-[var(--text-muted)]">CO₂ per capita</span>
-              <span className="font-bold text-[var(--text)]">{hoveredRegion.co2PerCapita} t/year</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-[var(--text-muted)]">Grid emission factor</span>
-              <span className="font-bold text-[var(--text)]">{hoveredRegion.gridFactor} kg/kWh</span>
-            </div>
-            <div className="flex justify-between text-xs">
-              <span className="text-[var(--text-muted)]">Population</span>
-              <span className="font-bold text-[var(--text)]">{hoveredRegion.population}</span>
-            </div>
+          <div className="space-y-1.5 text-xs">
+            <div className="flex justify-between"><span className="text-[var(--text-muted)]">CO₂/capita</span><span className="font-semibold text-[var(--text)]">{hoveredRegion.co2PerCapita} t/yr</span></div>
+            <div className="flex justify-between"><span className="text-[var(--text-muted)]">Grid factor</span><span className="font-semibold text-[var(--text)]">{hoveredRegion.gridFactor} kg/kWh</span></div>
+            <div className="flex justify-between"><span className="text-[var(--text-muted)]">Population</span><span className="font-semibold text-[var(--text)]">{hoveredRegion.population}</span></div>
           </div>
-          {/* Emission bar */}
-          <div className="mt-3">
-            <div className="flex justify-between text-[9px] text-[var(--text-muted)] mb-1">
-              <span>Emissions level</span>
-              <span>Global avg: 4.7 t</span>
-            </div>
-            <div className="h-2 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
-              <div
-                className="h-full rounded-full transition-all duration-500"
-                style={{
-                  width: `${Math.min((hoveredRegion.co2PerCapita / 20) * 100, 100)}%`,
-                  background: `linear-gradient(90deg, #10B981, ${getEmissionColor(hoveredRegion.co2PerCapita)})`,
-                }}
-              />
-            </div>
+          <div className="mt-2 h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+            <div className="h-full rounded-full" style={{ width: `${Math.min((hoveredRegion.co2PerCapita / 20) * 100, 100)}%`, background: getEmissionColor(hoveredRegion.co2PerCapita) }} />
           </div>
         </div>
       )}
 
       {/* Legend */}
-      <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-4 text-[10px] text-[var(--text-muted)] glass rounded-full px-4 py-2">
-        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#10B981]" /> &lt;3t</span>
-        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#F59E0B]" /> 3-8t</span>
-        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#F97316]" /> 8-14t</span>
-        <span className="flex items-center gap-1.5"><span className="w-2.5 h-2.5 rounded-full bg-[#EF4444]" /> &gt;14t</span>
+      <div className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-3 text-[9px] text-[var(--text-muted)] card !rounded-full !p-2 !px-4">
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#10B981]" /> Low</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#F59E0B]" /> Medium</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#F97316]" /> High</span>
+        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-full bg-[#EF4444]" /> Critical</span>
       </div>
     </div>
   );
