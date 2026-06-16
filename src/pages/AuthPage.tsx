@@ -8,7 +8,7 @@ export default function AuthPage() {
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
-  const [confirmationResult, setConfirmationResult] = useState<any>(null);
+  const [confirmationResult, setConfirmationResult] = useState<{ confirm: (code: string) => Promise<unknown> } | null>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -39,8 +39,8 @@ export default function AuthPage() {
         await signUpWithEmail(email, password);
         // TODO: Save profile (name, age, gender, country, city) to Firestore after signup
       }
-    } catch (err: any) {
-      setError(err.message || 'Authentication failed');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Authentication failed');
     } finally {
       setLoading(false);
     }
@@ -52,8 +52,8 @@ export default function AuthPage() {
     try {
       const result = await sendPhoneCode(phone);
       setConfirmationResult(result);
-    } catch (err: any) {
-      setError(err.message || 'Failed to send code');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Failed to send code');
     } finally {
       setLoading(false);
     }
@@ -63,9 +63,9 @@ export default function AuthPage() {
     setError('');
     setLoading(true);
     try {
-      await confirmationResult.confirm(code);
-    } catch (err: any) {
-      setError(err.message || 'Invalid code');
+      await confirmationResult!.confirm(code);
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Invalid code');
     } finally {
       setLoading(false);
     }
@@ -76,8 +76,8 @@ export default function AuthPage() {
     setLoading(true);
     try {
       await signInWithGoogle();
-    } catch (err: any) {
-      setError(err.message || 'Google sign-in failed');
+    } catch (err: unknown) {
+      setError(err instanceof Error ? err.message : 'Google sign-in failed');
     } finally {
       setLoading(false);
     }
