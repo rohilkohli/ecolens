@@ -58,9 +58,10 @@ Each object must have: "title" (string ≤8 words), "description" (string ≤60 
 let lastCallTime = 0;
 const MIN_INTERVAL_MS = 10_000;
 
-export function isTransientError(err: any): boolean {
-  const status = err?.status || err?.code;
-  const rawMessage = err?.message || '';
+export function isTransientError(err: unknown): boolean {
+  const errObj = (err && typeof err === 'object') ? err as Record<string, unknown> : {};
+  const status = (errObj.status ?? errObj.code) as number | undefined;
+  const rawMessage = String(errObj.message ?? '');
 
   // 429 (rate limit), 503 (service unavailable), 500 (internal), 502/504 (gateway)
   if (status === 429 || status === 503 || status === 500 || status === 502 || status === 504) {
@@ -107,9 +108,10 @@ export function isTransientError(err: any): boolean {
   return false;
 }
 
-export function cleanErrorMessage(err: any): string {
-  const status = err?.status || err?.code;
-  const rawMessage = err?.message || '';
+export function cleanErrorMessage(err: unknown): string {
+  const errObj = (err && typeof err === 'object') ? err as Record<string, unknown> : {};
+  const status = (errObj.status ?? errObj.code) as number | undefined;
+  const rawMessage = String(errObj.message ?? '');
 
   let parsedMessage = rawMessage;
   if (rawMessage) {
@@ -173,10 +175,10 @@ export async function retryWithBackoff<T>(
 ): Promise<T> {
   try {
     return await fn();
-  } catch (err: any) {
-    const isTransient = isTransientError(err);
-    if (retries > 0 && isTransient) {
-      console.warn(`Gemini call failed (transient: ${err?.message || err}). Retrying in ${delayMs}ms...`);
+  } catch (err: unknown) {
+    if (retries > 0 && isTransientError(err)) {
+      const msg = err instanceof Error ? err.message : String(err);
+      console.warn(`Gemini call failed (transient: ${msg}). Retrying in ${delayMs}ms...`);
       await new Promise((resolve) => setTimeout(resolve, delayMs));
       return retryWithBackoff(fn, retries - 1, delayMs * backoffFactor, backoffFactor);
     }

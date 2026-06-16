@@ -91,16 +91,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function signInWithEmail(email: string, pass: string) {
     try {
       await signInWithEmailAndPassword(auth, email, pass);
-    } catch (err: any) {
-      throw new Error(getFirebaseErrorMessage(err.code));
+    } catch (err: unknown) {
+      const code = (err && typeof err === 'object' && 'code' in err) ? String((err as { code: string }).code) : '';
+      throw new Error(getFirebaseErrorMessage(code));
     }
   }
 
   async function signUpWithEmail(email: string, pass: string) {
     try {
       await createUserWithEmailAndPassword(auth, email, pass);
-    } catch (err: any) {
-      throw new Error(getFirebaseErrorMessage(err.code));
+    } catch (err: unknown) {
+      const code = (err && typeof err === 'object' && 'code' in err) ? String((err as { code: string }).code) : '';
+      throw new Error(getFirebaseErrorMessage(code));
     }
   }
 
@@ -108,8 +110,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const provider = new GoogleAuthProvider();
       await signInWithPopup(auth, provider);
-    } catch (err: any) {
-      throw new Error(getFirebaseErrorMessage(err.code));
+    } catch (err: unknown) {
+      const code = (err && typeof err === 'object' && 'code' in err) ? String((err as { code: string }).code) : '';
+      throw new Error(getFirebaseErrorMessage(code));
     }
   }
 
@@ -117,8 +120,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const provider = new FacebookAuthProvider();
       await signInWithPopup(auth, provider);
-    } catch (err: any) {
-      throw new Error(getFirebaseErrorMessage(err.code));
+    } catch (err: unknown) {
+      const code = (err && typeof err === 'object' && 'code' in err) ? String((err as { code: string }).code) : '';
+      throw new Error(getFirebaseErrorMessage(code));
     }
   }
 
@@ -126,8 +130,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const provider = new OAuthProvider('apple.com');
       await signInWithPopup(auth, provider);
-    } catch (err: any) {
-      throw new Error(getFirebaseErrorMessage(err.code));
+    } catch (err: unknown) {
+      const code = (err && typeof err === 'object' && 'code' in err) ? String((err as { code: string }).code) : '';
+      throw new Error(getFirebaseErrorMessage(code));
     }
   }
 
@@ -148,8 +153,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!appVerifier) throw new Error('Recaptcha not initialized. Please reload the page.');
     try {
       return await signInWithPhoneNumber(auth, phoneNumber, appVerifier);
-    } catch (err: any) {
-      throw new Error(getFirebaseErrorMessage(err.code));
+    } catch (err: unknown) {
+      const code = (err && typeof err === 'object' && 'code' in err) ? String((err as { code: string }).code) : '';
+      throw new Error(getFirebaseErrorMessage(code));
     }
   }
 
@@ -160,7 +166,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   async function handleGuestSignIn() {
     try {
       await signInAnonymously(auth);
-    } catch (err: any) {
+    } catch {
       throw new Error('Failed to start demo session. Please try again.');
     }
   }
