@@ -2,9 +2,115 @@ import { useState, lazy, Suspense } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
 import { useTheme } from '../context/ThemeContext';
-import { calculateEmission, EMISSION_FACTORS } from '../services/emissionFactors';
+import { calculateEmission, EMISSION_FACTORS, type EmissionCategory } from '../services/emissionFactors';
 
 const EcoGlobe = lazy(() => import('../components/Globe/EcoGlobe'));
+
+/** "Try Free" inline demo — 3 entries, AI-style summary, then prompt to register */
+function TryFreeDemo({ onDone }: { onDone: () => void }) {
+  const [entries, setEntries] = useState<{ category: EmissionCategory; subType: string; qty: number; co2: number }[]>([]);
+  const [category, setCategory] = useState<EmissionCategory>('transport');
+  const [subType, setSubType] = useState('car_petrol');
+  const [qty, setQty] = useState('');
+
+  const subTypes = Object.entries(EMISSION_FACTORS[category]);
+
+  function addEntry() {
+    const q = parseFloat(qty);
+    if (!q || q <= 0) return;
+    const co2 = calculateEmission(category, subType, q);
+    setEntries(prev => [...prev, { category, subType, qty: q, co2 }]);
+    setQty('');
+  }
+
+  const totalCo2 = entries.reduce((s, e) => s + e.co2, 0);
+  const showResults = entries.length >= 3;
+
+  if (showResults) {
+    return (
+      <div className="liquid-glass p-6 animate-scale-in text-center">
+        <div className="w-16 h-16 rounded-2xl gradient-bg flex items-center justify-center text-3xl mx-auto mb-4 shadow-lg">🌍</div>
+        <h3 className="text-xl font-bold text-[var(--text)] mb-2">Your Quick Footprint</h3>
+        <p className="text-3xl font-bold mb-1" style={{ color: 'var(--accent)' }}>{totalCo2.toFixed(2)} kg CO₂e</p>
+        <p className="text-sm text-[var(--text-muted)] mb-4">from {entries.length} activities</p>
+        <div className="space-y-2 mb-6 text-left">
+          {entries.map((e, i) => (
+            <div key={i} className="flex justify-between text-sm p-2 rounded-lg" style={{ background: 'var(--accent-soft)' }}>
+              <span className="text-[var(--text-secondary)]">{EMISSION_FACTORS[e.category][e.subType]?.label}</span>
+              <span className="font-semibold" style={{ color: 'var(--accent)' }}>{e.co2.toFixed(3)} kg</span>
+            </div>
+          ))}
+        </div>
+        <p className="text-sm text-[var(--text-secondary)] mb-4">
+          Want personalised AI tips to reduce your footprint?<br />Sign up for the full experience!
+        </p>
+        <button onClick={onDone} className="btn-primary w-full !py-3.5">
+          Create Free Account
+        </button>
+        <p className="text-[10px] text-[var(--text-muted)] mt-3">Get AI insights, track trends, take challenges</p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="liquid-glass p-6 animate-fade-in-up">
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="font-bold text-[var(--text)]">Quick Try — Log {3 - entries.length} more</h3>
+        <span className="text-xs font-medium px-2 py-0.5 rounded-full" style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>
+          {entries.length}/3
+        </span>
+      </div>
+
+      {/* Entries so far */}
+      {entries.length > 0 && (
+        <div className="space-y-1.5 mb-4">
+          {entries.map((e, i) => (
+            <div key={i} className="flex justify-between text-xs p-2 rounded-lg" style={{ background: 'var(--accent-soft)' }}>
+              <span className="text-[var(--text-secondary)]">{EMISSION_FACTORS[e.category][e.subType]?.label} ({e.qty})</span>
+              <span className="font-bold" style={{ color: 'var(--accent)' }}>{e.co2.toFixed(3)} kg</span>
+            </div>
+          ))}
+        </div>
+      )}
+
+      {/* Category selector */}
+      <div className="flex gap-2 mb-3 overflow-x-auto pb-1">
+        {(['transport', 'food', 'energy', 'shopping'] as const).map(cat => (
+          <button
+            key={cat}
+            onClick={() => { setCategory(cat); setSubType(Object.keys(EMISSION_FACTORS[cat])[0]); }}
+            className={`px-3 py-1.5 rounded-lg text-xs font-medium whitespace-nowrap transition-all ${
+              category === cat ? 'btn-primary !py-1.5 !px-3' : 'btn-glass !py-1.5 !px-3 !text-xs'
+            }`}
+          >
+            {cat.charAt(0).toUpperCase() + cat.slice(1)}
+          </button>
+        ))}
+      </div>
+
+      {/* Activity + quantity */}
+      <div className="flex gap-2 mb-3">
+        <select
+          value={subType}
+          onChange={e => setSubType(e.target.value)}
+          className="input-glass flex-1 !py-2 !text-xs"
+        >
+          {subTypes.map(([key, f]) => <option key={key} value={key}>{f.label}</option>)}
+        </select>
+        <input
+          type="number" min="0.1" step="0.1" value={qty}
+          onChange={e => setQty(e.target.value)}
+          placeholder="Qty"
+          className="input-glass w-20 !py-2 !text-xs text-center"
+        />
+      </div>
+
+      <button onClick={addEntry} disabled={!qty || parseFloat(qty) <= 0} className="btn-primary w-full !py-2.5 !text-sm disabled:opacity-40">
+        Add Entry ({entries.length + 1}/3)
+      </button>
+    </div>
+  );
+}
 
 const FEATURES = [
   { icon: '📊', title: 'Smart Tracking', desc: 'Log activities across 4 categories with IPCC AR6 emission factors for precise CO₂e calculations.' },
@@ -69,8 +175,14 @@ export default function LandingPage() {
   const navigate = useNavigate();
   const { signInAsGuest } = useAuth();
   const { theme, toggleTheme } = useTheme();
+  const [showTryFree, setShowTryFree] = useState(false);
 
   async function handleTryFree() {
+    setShowTryFree(true);
+  }
+
+  // Used by CTA in bottom section
+  async function handleFullAccess() {
     try {
       await signInAsGuest();
       navigate('/app');
@@ -152,7 +264,7 @@ export default function LandingPage() {
             </div>
 
             <div className="animate-fade-in-up hidden lg:block" style={{ animationDelay: '0.2s' }}>
-              <InteractiveDemo />
+              {showTryFree ? <TryFreeDemo onDone={() => navigate('/auth')} /> : <InteractiveDemo />}
             </div>
           </div>
         </div>
@@ -240,8 +352,8 @@ export default function LandingPage() {
       {/* ═══ Mobile Demo ═══ */}
       <section className="py-16 lg:hidden px-4">
         <div className="max-w-sm mx-auto">
-          <h2 className="text-xl font-bold text-center mb-6">Try It Now</h2>
-          <InteractiveDemo />
+          <h2 className="text-xl font-bold text-center mb-6">{showTryFree ? 'Quick Carbon Check' : 'Try It Now'}</h2>
+          {showTryFree ? <TryFreeDemo onDone={() => navigate('/auth')} /> : <InteractiveDemo />}
         </div>
       </section>
 
@@ -255,7 +367,7 @@ export default function LandingPage() {
           <p className="text-lg text-[var(--text-secondary)] mb-8 max-w-md mx-auto">
             Start tracking your carbon footprint today. No signup required. Takes 30 seconds.
           </p>
-          <button onClick={handleTryFree} className="btn-primary !py-4 !px-8 !text-base">
+          <button onClick={handleFullAccess} className="btn-primary !py-4 !px-8 !text-base">
             Start Tracking for Free
             <svg className="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
           </button>

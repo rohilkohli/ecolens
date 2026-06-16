@@ -109,18 +109,53 @@ export default function DashboardPage() {
           </div>
         </div>
 
+        {/* ── Local Carbon Map ── */}
+        {activities.length > 0 && (
+          <div className="mb-5 liquid-glass p-5">
+            <div className="flex items-center justify-between mb-3">
+              <p className="text-[var(--text-muted)] text-xs uppercase tracking-wider font-medium">Your Region's Carbon Context</p>
+              <span className="text-[9px] px-2 py-0.5 rounded-full" style={{ background: 'var(--accent-soft)', color: 'var(--accent)' }}>India Grid: 0.71 kg/kWh</span>
+            </div>
+            <div className="rounded-xl overflow-hidden border" style={{ borderColor: 'var(--border)' }}>
+              <iframe
+                title="Carbon emission map of user region"
+                src="https://www.google.com/maps/embed?pb=!1m14!1m12!1m3!1d14000000!2d78.9!3d20.5!2m3!1f0!2f0!3f0!3m2!1i1024!2i768!4f13.1!5e1!3m2!1sen!2sin"
+                width="100%"
+                height="180"
+                style={{ border: 0, filter: 'saturate(0.7) contrast(1.1)' }}
+                loading="lazy"
+                referrerPolicy="no-referrer-when-downgrade"
+                aria-label="Map showing carbon emission context for your region"
+              />
+            </div>
+            <div className="grid grid-cols-3 gap-2 mt-3">
+              <div className="text-center p-2 rounded-lg" style={{ background: 'var(--accent-soft)' }}>
+                <p className="text-xs font-bold" style={{ color: 'var(--accent)' }}>0.71</p>
+                <p className="text-[8px] text-[var(--text-muted)]">kg CO₂/kWh</p>
+              </div>
+              <div className="text-center p-2 rounded-lg" style={{ background: 'var(--accent-soft)' }}>
+                <p className="text-xs font-bold" style={{ color: 'var(--accent)' }}>1.9t</p>
+                <p className="text-[8px] text-[var(--text-muted)]">India avg/yr</p>
+              </div>
+              <div className="text-center p-2 rounded-lg" style={{ background: 'var(--accent-soft)' }}>
+                <p className="text-xs font-bold" style={{ color: 'var(--accent)' }}>4.7t</p>
+                <p className="text-[8px] text-[var(--text-muted)]">Global avg/yr</p>
+              </div>
+            </div>
+          </div>
+        )}
+
         {/* ── Empty state ── */}
         {activities.length === 0 && (
-          <div className="mb-5 border border-[var(--accent)]/20 bg-[var(--accent)]/5 rounded-xl p-6 text-center animate-fade-in-up">
+          <div className="mb-5 liquid-glass p-6 text-center animate-fade-in-up">
             <span className="text-4xl mb-3 block animate-float">🌍</span>
-            <h2 className="font-semibold text-lg mb-1 text-[var(--text-primary)]">Start your eco journey</h2>
+            <h2 className="font-semibold text-lg mb-1 text-[var(--text)]">Start your eco journey</h2>
             <p className="text-[var(--text-secondary)] text-sm mb-4">
               Log your first activity to see your carbon footprint and get AI insights.
             </p>
             <button
               onClick={() => navigate('/app/log')}
-              className="font-semibold text-sm rounded-xl px-5 py-2.5 transition-colors"
-              style={{ background: 'var(--accent)', color: 'var(--accent-text)' }}
+              className="btn-primary !py-2.5"
             >
               Log First Activity →
             </button>
