@@ -1,58 +1,43 @@
 import { useState, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import { useAuth } from '../context/AuthContext';
-import Button from '../components/ui/Button';
 
 export default function AuthPage() {
-  const [isLogin, setIsLogin] = useState(true);
+  const [mode, setMode] = useState<'login' | 'signup'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [phone, setPhone] = useState('');
   const [code, setCode] = useState('');
-  const [usePhone, setUsePhone] = useState(false);
   const [confirmationResult, setConfirmationResult] = useState<any>(null);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
-  const {
-    signInWithEmail,
-    signUpWithEmail,
-    signInWithGoogle,
-    signInWithFacebook,
-    signInWithApple,
-    setupRecaptcha,
-    sendPhoneCode,
-    currentUser
-  } = useAuth();
+  // Signup extra fields
+  const [name, setName] = useState('');
+  const [age, setAge] = useState('');
+  const [gender, setGender] = useState('');
+  const [country, setCountry] = useState('India');
+  const [city, setCity] = useState('');
 
+  const { signInWithEmail, signUpWithEmail, signInWithGoogle, setupRecaptcha, sendPhoneCode, currentUser } = useAuth();
   const navigate = useNavigate();
 
   useEffect(() => {
-    if (currentUser) {
-      navigate('/app');
-    }
+    if (currentUser) navigate('/app');
     setupRecaptcha('recaptcha-container');
   }, [currentUser, navigate, setupRecaptcha]);
 
-  async function handleSubmit(e: React.FormEvent) {
+  async function handleEmailSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
     setLoading(true);
-
     try {
-      if (usePhone) {
-        if (!confirmationResult) {
-          const result = await sendPhoneCode(phone);
-          setConfirmationResult(result);
-        } else {
-          await confirmationResult.confirm(code);
-        }
+      if (mode === 'login') {
+        await signInWithEmail(email, password);
       } else {
-        if (isLogin) {
-          await signInWithEmail(email, password);
-        } else {
-          await signUpWithEmail(email, password);
-        }
+        if (!name.trim()) { setError('Please enter your name'); setLoading(false); return; }
+        await signUpWithEmail(email, password);
+        // TODO: Save profile (name, age, gender, country, city) to Firestore after signup
       }
     } catch (err: any) {
       setError(err.message || 'Authentication failed');
@@ -61,179 +46,194 @@ export default function AuthPage() {
     }
   }
 
-  async function handleProviderSignIn(providerFunction: () => Promise<void>) {
+  async function handlePhoneSend() {
     setError('');
     setLoading(true);
     try {
-      await providerFunction();
+      const result = await sendPhoneCode(phone);
+      setConfirmationResult(result);
     } catch (err: any) {
-      setError(err.message || 'Provider login failed');
+      setError(err.message || 'Failed to send code');
     } finally {
       setLoading(false);
     }
   }
 
-  function handleUnavailableProvider(providerName: string) {
-    alert(`${providerName} login requires custom OIDC configuration in Google Cloud Identity Platform. This is not natively available in Firebase out-of-the-box.`);
+  async function handlePhoneVerify() {
+    setError('');
+    setLoading(true);
+    try {
+      await confirmationResult.confirm(code);
+    } catch (err: any) {
+      setError(err.message || 'Invalid code');
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleGoogle() {
+    setError('');
+    setLoading(true);
+    try {
+      await signInWithGoogle();
+    } catch (err: any) {
+      setError(err.message || 'Google sign-in failed');
+    } finally {
+      setLoading(false);
+    }
   }
 
   return (
     <div className="min-h-screen flex items-center justify-center px-4 py-10 bg-[var(--bg)] relative overflow-hidden">
-      {/* Animated background orbs */}
+      {/* Animated background */}
       <div className="absolute inset-0 pointer-events-none" aria-hidden="true">
-        <div className="absolute top-[-20%] left-[-10%] w-[500px] h-[500px] rounded-full opacity-40 animate-gradient" style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.3), transparent 70%)', filter: 'blur(80px)' }} />
-        <div className="absolute bottom-[-20%] right-[-10%] w-[400px] h-[400px] rounded-full opacity-30 animate-gradient" style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.25), transparent 70%)', filter: 'blur(70px)', animationDelay: '2s', animationDirection: 'reverse' }} />
-        <div className="absolute top-[40%] right-[20%] w-[300px] h-[300px] rounded-full opacity-20 animate-gradient" style={{ background: 'radial-gradient(circle, rgba(139,92,246,0.2), transparent 70%)', filter: 'blur(60px)', animationDelay: '4s' }} />
-        {/* Floating particles */}
-        <div className="absolute top-[20%] left-[15%] w-2 h-2 rounded-full bg-[var(--accent)] opacity-30 animate-float" />
-        <div className="absolute top-[60%] left-[80%] w-1.5 h-1.5 rounded-full bg-[var(--accent)] opacity-20 animate-float" style={{ animationDelay: '1s' }} />
-        <div className="absolute top-[80%] left-[30%] w-1 h-1 rounded-full bg-sky-400 opacity-25 animate-float" style={{ animationDelay: '2s' }} />
-        <div className="absolute top-[10%] right-[25%] w-1.5 h-1.5 rounded-full bg-purple-400 opacity-20 animate-float" style={{ animationDelay: '1.5s' }} />
-        <div className="absolute bottom-[30%] left-[60%] w-2 h-2 rounded-full bg-[var(--accent)] opacity-15 animate-float" style={{ animationDelay: '3s' }} />
-        {/* Grid mesh overlay */}
-        <div className="absolute inset-0 opacity-[0.02]" style={{ backgroundImage: 'linear-gradient(var(--accent) 1px, transparent 1px), linear-gradient(90deg, var(--accent) 1px, transparent 1px)', backgroundSize: '60px 60px' }} />
+        <div className="absolute top-[-15%] left-[-5%] w-[450px] h-[450px] rounded-full animate-gradient" style={{ background: 'radial-gradient(circle, rgba(16,185,129,0.25), transparent 70%)', filter: 'blur(80px)' }} />
+        <div className="absolute bottom-[-15%] right-[-5%] w-[350px] h-[350px] rounded-full animate-gradient" style={{ background: 'radial-gradient(circle, rgba(59,130,246,0.2), transparent 70%)', filter: 'blur(70px)', animationDelay: '2s', animationDirection: 'reverse' }} />
+        <div className="absolute top-[30%] right-[15%] w-[250px] h-[250px] rounded-full animate-gradient" style={{ background: 'radial-gradient(circle, rgba(168,85,247,0.15), transparent 70%)', filter: 'blur(60px)', animationDelay: '4s' }} />
+        {/* Floating leaf particles */}
+        <div className="absolute top-[15%] left-[10%] text-2xl animate-float opacity-40">🍃</div>
+        <div className="absolute top-[50%] right-[8%] text-xl animate-float opacity-30" style={{ animationDelay: '1s' }}>🌱</div>
+        <div className="absolute bottom-[20%] left-[20%] text-lg animate-float opacity-25" style={{ animationDelay: '2s' }}>🌿</div>
+        <div className="absolute top-[70%] right-[30%] text-xl animate-float opacity-20" style={{ animationDelay: '1.5s' }}>☘️</div>
+        <div className="absolute top-[8%] right-[40%] text-sm animate-float opacity-30" style={{ animationDelay: '3s' }}>🍀</div>
+        {/* Grid mesh */}
+        <div className="absolute inset-0 opacity-[0.015]" style={{ backgroundImage: 'linear-gradient(var(--accent) 1px, transparent 1px), linear-gradient(90deg, var(--accent) 1px, transparent 1px)', backgroundSize: '50px 50px' }} />
       </div>
 
       <div className="w-full max-w-md animate-fade-in-up relative z-10">
-        {/* Brand header */}
+        {/* Brand */}
         <div className="text-center mb-8">
-          <div className="inline-flex items-center justify-center w-20 h-20 rounded-2xl gradient-bg shadow-lg mb-5 animate-float" style={{ boxShadow: '0 8px 30px rgba(16,185,129,0.3)' }}>
-            <span className="text-4xl" aria-hidden="true">🌿</span>
+          <div className="inline-flex items-center justify-center w-16 h-16 rounded-2xl gradient-bg shadow-lg mb-4 animate-float" style={{ boxShadow: '0 8px 30px rgba(16,185,129,0.3)' }}>
+            <span className="text-3xl">🌿</span>
           </div>
-          <h1 className="text-3xl font-bold text-[var(--text)]">
-            Welcome to <span className="gradient-text">EcoLens</span>
+          <h1 className="text-2xl font-bold text-[var(--text)]">
+            {mode === 'login' ? 'Welcome back to ' : 'Join '}
+            <span className="gradient-text">EcoLens</span>
           </h1>
-          <p className="text-[var(--text-secondary)] mt-2 text-sm">
-            Track your carbon footprint and make a difference
+          <p className="text-[var(--text-muted)] mt-1 text-sm">
+            {mode === 'login' ? 'Track your carbon footprint' : 'Start your sustainability journey'}
           </p>
         </div>
 
+        {/* Card */}
         <div className="liquid-glass p-6 sm:p-8">
           {error && (
-            <div className="mb-5 p-3.5 bg-danger/5 border border-danger/20 text-danger text-sm rounded-xl flex items-center gap-2 animate-scale-in">
-              <svg className="w-4 h-4 flex-shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
-              </svg>
-              {error}
+            <div className="mb-4 p-3 rounded-xl text-sm flex items-center gap-2 animate-scale-in" style={{ background: 'rgba(239,68,68,0.08)', border: '1px solid rgba(239,68,68,0.2)', color: '#EF4444' }}>
+              <span>⚠️</span> {error}
             </div>
           )}
 
-          <form onSubmit={handleSubmit} className="space-y-4">
-            {usePhone ? (
-              <>
-                {!confirmationResult ? (
-                  <div>
-                    <label className="block text-sm font-medium text-[var(--text)] mb-1.5">Phone Number</label>
-                    <input
-                      type="tel"
-                      required
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      placeholder="+1234567890"
-                      className="input-glass"
-                    />
-                  </div>
-                ) : (
-                  <div>
-                    <label className="block text-sm font-medium text-[var(--text)] mb-1.5">SMS Verification Code</label>
-                    <input
-                      type="text"
-                      required
-                      value={code}
-                      onChange={(e) => setCode(e.target.value)}
-                      placeholder="123456"
-                      className="input-glass tracking-widest text-center text-lg"
-                    />
-                  </div>
-                )}
-              </>
-            ) : (
-              <>
-                <div>
-                  <label className="block text-sm font-medium text-[var(--text)] mb-1.5">Email</label>
-                  <input
-                    type="email"
-                    required
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    placeholder="you@example.com"
-                    className="input-glass"
-                  />
-                </div>
-                <div>
-                  <label className="block text-sm font-medium text-[var(--text)] mb-1.5">Password</label>
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="••••••••"
-                    className="input-glass"
-                  />
-                </div>
-              </>
-            )}
-
-            <div id="recaptcha-container"></div>
-
-            <Button type="submit" className="w-full justify-center" size="lg" loading={loading}>
-              {usePhone
-                ? (confirmationResult ? 'Verify Code' : 'Send SMS')
-                : (isLogin ? 'Log In' : 'Create Account')
-              }
-            </Button>
-          </form>
-
-          <div className="mt-5 flex items-center gap-2">
+          {/* Google + Phone side by side */}
+          <div className="grid grid-cols-2 gap-3 mb-6">
             <button
-              type="button"
-              onClick={() => {
-                setUsePhone(!usePhone);
-                setConfirmationResult(null);
-                setError('');
-              }}
-              className="text-sm text-leaf font-medium hover:underline underline-offset-2 transition-colors"
+              onClick={handleGoogle}
+              disabled={loading}
+              className="btn-glass !py-3 !text-sm !font-medium flex items-center justify-center gap-2"
             >
-              {usePhone ? 'Use Email instead' : 'Use Phone instead'}
-            </button>
-            {!usePhone && (
-              <>
-                <span className="text-[var(--text-muted)]">·</span>
-                <button
-                  type="button"
-                  onClick={() => setIsLogin(!isLogin)}
-                  className="text-sm text-[var(--text-secondary)] hover:text-[var(--text)] transition-colors"
-                >
-                  {isLogin ? "Create an account" : 'Sign in instead'}
-                </button>
-              </>
-            )}
-          </div>
-
-          <div className="mt-6 flex items-center gap-4">
-            <span className="flex-1 h-px bg-[var(--border-color)]"></span>
-            <span className="text-xs text-[var(--text-muted)] font-medium">or continue with</span>
-            <span className="flex-1 h-px bg-[var(--border-color)]"></span>
-          </div>
-
-          <div className="mt-5 grid grid-cols-2 gap-3 stagger-children">
-            <Button variant="secondary" onClick={() => handleProviderSignIn(signInWithGoogle)} className="w-full justify-center">
               <svg className="w-4 h-4" viewBox="0 0 24 24"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
               Google
-            </Button>
-            <Button variant="secondary" onClick={() => handleProviderSignIn(signInWithApple)} className="w-full justify-center">
-              <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 24 24"><path d="M17.05 20.28c-.98.95-2.05.88-3.08.4-1.09-.5-2.08-.48-3.24 0-1.44.62-2.2.44-3.06-.4C2.79 15.25 3.51 7.59 9.05 7.31c1.35.07 2.29.74 3.08.8 1.18-.24 2.31-.93 3.57-.84 1.51.12 2.65.72 3.4 1.8-3.12 1.87-2.38 5.98.48 7.13-.57 1.5-1.31 2.99-2.54 4.09zM12.03 7.25c-.15-2.23 1.66-4.07 3.74-4.25.29 2.58-2.34 4.5-3.74 4.25z"/></svg>
-              Apple
-            </Button>
-            <Button variant="secondary" onClick={() => handleProviderSignIn(signInWithFacebook)} className="w-full justify-center">
-              <svg className="w-4 h-4" fill="#1877F2" viewBox="0 0 24 24"><path d="M24 12.073c0-6.627-5.373-12-12-12s-12 5.373-12 12c0 5.99 4.388 10.954 10.125 11.854v-8.385H7.078v-3.47h3.047V9.43c0-3.007 1.792-4.669 4.533-4.669 1.312 0 2.686.235 2.686.235v2.953H15.83c-1.491 0-1.956.925-1.956 1.874v2.25h3.328l-.532 3.47h-2.796v8.385C19.612 23.027 24 18.062 24 12.073z"/></svg>
-              Facebook
-            </Button>
-            <Button variant="secondary" onClick={() => handleUnavailableProvider('Instagram')} className="w-full justify-center">
-              <svg className="w-4 h-4" fill="url(#ig-gradient)" viewBox="0 0 24 24"><defs><linearGradient id="ig-gradient" x1="0%" y1="100%" x2="100%" y2="0%"><stop offset="0%" stopColor="#FFDC80"/><stop offset="25%" stopColor="#F77737"/><stop offset="50%" stopColor="#E1306C"/><stop offset="75%" stopColor="#C13584"/><stop offset="100%" stopColor="#833AB4"/></linearGradient></defs><path d="M12 2.163c3.204 0 3.584.012 4.85.07 3.252.148 4.771 1.691 4.919 4.919.058 1.265.069 1.645.069 4.849 0 3.205-.012 3.584-.069 4.849-.149 3.225-1.664 4.771-4.919 4.919-1.266.058-1.644.07-4.85.07-3.204 0-3.584-.012-4.849-.07-3.26-.149-4.771-1.699-4.919-4.92-.058-1.265-.07-1.644-.07-4.849 0-3.204.013-3.583.07-4.849.149-3.227 1.664-4.771 4.919-4.919 1.266-.057 1.645-.069 4.849-.069zM12 0C8.741 0 8.333.014 7.053.072 2.695.272.273 2.69.073 7.052.014 8.333 0 8.741 0 12c0 3.259.014 3.668.072 4.948.2 4.358 2.618 6.78 6.98 6.98C8.333 23.986 8.741 24 12 24c3.259 0 3.668-.014 4.948-.072 4.354-.2 6.782-2.618 6.979-6.98.059-1.28.073-1.689.073-4.948 0-3.259-.014-3.667-.072-4.947-.196-4.354-2.617-6.78-6.979-6.98C15.668.014 15.259 0 12 0zm0 5.838a6.162 6.162 0 100 12.324 6.162 6.162 0 000-12.324zM12 16a4 4 0 110-8 4 4 0 010 8zm6.406-11.845a1.44 1.44 0 100 2.881 1.44 1.44 0 000-2.881z"/></svg>
-              Instagram
-            </Button>
+            </button>
+            <button
+              onClick={() => {
+                if (!confirmationResult && phone) handlePhoneSend();
+                else if (!phone) setError('Enter phone number below first');
+              }}
+              disabled={loading}
+              className="btn-glass !py-3 !text-sm !font-medium flex items-center justify-center gap-2"
+            >
+              📱 Phone
+            </button>
           </div>
+
+          {/* Divider */}
+          <div className="flex items-center gap-3 mb-5">
+            <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
+            <span className="text-xs text-[var(--text-muted)]">or with email</span>
+            <div className="flex-1 h-px" style={{ background: 'var(--border)' }} />
+          </div>
+
+          {/* Email/Password form */}
+          <form onSubmit={handleEmailSubmit} className="space-y-4">
+            {/* Signup extra fields */}
+            {mode === 'signup' && (
+              <div className="space-y-3 animate-slide-down">
+                <input value={name} onChange={e => setName(e.target.value)} placeholder="Full Name" className="input-glass" required />
+                <div className="grid grid-cols-2 gap-3">
+                  <input value={age} onChange={e => setAge(e.target.value)} placeholder="Age" type="number" min="10" max="100" className="input-glass" />
+                  <select value={gender} onChange={e => setGender(e.target.value)} className="input-glass">
+                    <option value="">Gender</option>
+                    <option value="male">Male</option>
+                    <option value="female">Female</option>
+                    <option value="other">Other</option>
+                  </select>
+                </div>
+                <div className="grid grid-cols-2 gap-3">
+                  <select value={country} onChange={e => setCountry(e.target.value)} className="input-glass">
+                    <option value="India">India</option>
+                    <option value="United States">United States</option>
+                    <option value="United Kingdom">United Kingdom</option>
+                    <option value="Germany">Germany</option>
+                    <option value="Australia">Australia</option>
+                    <option value="Canada">Canada</option>
+                    <option value="Japan">Japan</option>
+                    <option value="Brazil">Brazil</option>
+                    <option value="France">France</option>
+                    <option value="Other">Other</option>
+                  </select>
+                  <input value={city} onChange={e => setCity(e.target.value)} placeholder="City" className="input-glass" />
+                </div>
+              </div>
+            )}
+
+            <input
+              type="email" required value={email} onChange={e => setEmail(e.target.value)}
+              placeholder="Email address" className="input-glass"
+            />
+            <input
+              type="password" required value={password} onChange={e => setPassword(e.target.value)}
+              placeholder="Password" className="input-glass" minLength={6}
+            />
+
+            {/* Phone number field (inline) */}
+            <input
+              type="tel" value={phone} onChange={e => setPhone(e.target.value)}
+              placeholder="Phone (optional, e.g. +91...)" className="input-glass"
+            />
+
+            {/* OTP field appears when code sent */}
+            {confirmationResult && (
+              <div className="animate-scale-in">
+                <input
+                  type="text" value={code} onChange={e => setCode(e.target.value)}
+                  placeholder="Enter OTP code" className="input-glass tracking-widest text-center text-lg"
+                />
+                <button type="button" onClick={handlePhoneVerify} disabled={loading} className="btn-primary w-full mt-2 !text-sm">
+                  Verify OTP
+                </button>
+              </div>
+            )}
+
+            <div id="recaptcha-container" />
+
+            <button type="submit" disabled={loading} className="btn-primary w-full !py-3.5">
+              {loading ? (
+                <span className="flex items-center gap-2"><span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" /> Processing...</span>
+              ) : (
+                mode === 'login' ? 'Log In' : 'Create Account'
+              )}
+            </button>
+          </form>
+
+          {/* Toggle login/signup */}
+          <p className="text-center text-sm text-[var(--text-muted)] mt-5">
+            {mode === 'login' ? "Don't have an account? " : 'Already have an account? '}
+            <button
+              onClick={() => { setMode(mode === 'login' ? 'signup' : 'login'); setError(''); }}
+              className="font-semibold hover:underline" style={{ color: 'var(--accent)' }}
+            >
+              {mode === 'login' ? 'Sign Up' : 'Log In'}
+            </button>
+          </p>
         </div>
       </div>
     </div>

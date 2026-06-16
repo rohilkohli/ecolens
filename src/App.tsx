@@ -8,6 +8,7 @@ import AuthPage from './pages/AuthPage';
 import DashboardPage from './pages/DashboardPage';
 import LogPage from './pages/LogPage';
 import ProfilePage from './pages/ProfilePage';
+import EcoChatbot from './components/Chatbot/EcoChatbot';
 
 const InsightsPage   = lazy(() => import('./pages/InsightsPage'));
 const ChallengePage  = lazy(() => import('./pages/ChallengePage'));
@@ -118,6 +119,7 @@ export default function App() {
           </Routes>
         </Suspense>
       </main>
+      {currentUser && <EcoChatbot />}
     </BrowserRouter>
   );
 }
